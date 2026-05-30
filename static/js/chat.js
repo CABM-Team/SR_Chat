@@ -1,146 +1,29 @@
-const API_BASE = 'http://localhost:5000/api';
+// chat_main.js - 主要UI逻辑
 
-let currentContact = null;
-let messages = {};
-let currentUsername = null;
-let userAvatar = null;
+// ==================== UI 渲染函数 ====================
 
-async function checkAuth() {
-    try {
-        const response = await fetch(`${API_BASE}/auth/check_session`);
-
-        if (!response.ok) {
-            // 不要立即跳转，先检查是否是网络问题
-            if (response.status === 401 || response.status === 403) {
-                redirectToLogin();
-            }
-            return false;
-        }
-
-        const data = await response.json();
-
-        if (!data.success || !data.logged_in) {
-            redirectToLogin();
-            return false;
-        }
-
-        currentUsername = data.username;
-        userAvatar = data.avatar_url;
-
-        localStorage.setItem('currentUser', currentUsername);
-        localStorage.setItem('userAvatar', userAvatar || '');
-
-        return true;
-    } catch (error) {
-        console.error('Auth check error:', error);
-        // 网络错误时不跳转，显示错误提示
-        return false;
-    }
-}
-
-// 添加防重复跳转的标志
-let isRedirecting = false;
-
-function redirectToLogin() {
-    if (isRedirecting) return;
-    if (window.location.pathname === '/login') return;
-    
-    isRedirecting = true;
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('userAvatar');
-    window.location.href = '/login';
-}
-
-async function loadUserContacts() {
-    try {
-        const response = await fetch(`${API_BASE}/contacts`);
-
-        if (response.status === 401) {
-            const data = await response.json();
-            if (data.require_login) {
-                window.location.href = '/login';
-                return;
-            }
-        }
-
-        if (!response.ok) {
-            throw new Error('获取联系人失败');
-        }
-
-        const data = await response.json();
-
-        if (data.success && data.data) {
-            return data.data;
-        } else {
-            throw new Error(data.error || '获取联系人失败');
-        }
-    } catch (error) {
-        console.error('加载联系人失败:', error);
-        return [];
-    }
-}
-
-async function loadUserMessages(contactId) {
-    try {
-        const response = await fetch(`${API_BASE}/get_messages/${contactId}`);
-
-        if (response.status === 401) {
-            const data = await response.json();
-            if (data.require_login) {
-                window.location.href = '/login';
-                return [];
-            }
-        }
-
-        if (!response.ok) {
-            throw new Error('获取消息失败');
-        }
-
-        const data = await response.json();
-
-        if (data.success && data.data) {
-            return data.data;
-        } else {
-            return [];
-        }
-    } catch (error) {
-        console.error('加载消息失败:', error);
-        return [];
-    }
-}
-
-function init() {
-    checkAuth().then(isAuthenticated => {
-        if (isAuthenticated) {
-            setupEventListeners();
-            loadInitialData();
-        }
-    });
-}
-
-async function loadInitialData() {
-    const contactsData = await loadUserContacts();
-    renderContactList(contactsData);
-}
-
+// 渲染联系人列表
 function renderContactList(contactsData) {
     const listContainer = document.getElementById('contactList');
     const contactsToRender = contactsData;
 
-    listContainer.innerHTML = contactsToRender.map(contact => `
-        <div class="recent-contact-item" data-id="${contact.id}">
-            <div class="avatar">
-                <img src="${contact.avatar}" alt="${contact.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${contact.name[0]}';">
-            </div>
-           <div class="contact-info">
-                <div class="contact-name-row">
-                    <span class="contact-name">${contact.name}</span>
-                    <span class="contact-time">${contact.lastTime || ''}</span>
+    listContainer.innerHTML = contactsToRender.map(contact => {
+        const formattedTime = formatContactTime(contact.lastTime);
+        return `
+            <div class="recent-contact-item" data-id="${contact.id}">
+                <div class="avatar">
+                    <img src="${contact.avatar}" alt="${contact.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${contact.name[0]}';">
                 </div>
-                <div class="contact-preview">${contact.preview || ''}</div>
+                <div class="contact-info">
+                    <div class="contact-name-row">
+                        <span class="contact-name">${escapeHtml(contact.name)}</span>
+                        <span class="contact-time">${formattedTime}</span>
+                    </div>
+                    <div class="contact-preview">${escapeHtml(contact.preview || '')}</div>
+                </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 
     listContainer.querySelectorAll('.recent-contact-item').forEach(item => {
         item.addEventListener('click', () => {
@@ -150,6 +33,7 @@ function renderContactList(contactsData) {
     });
 }
 
+// 选择联系人
 async function selectContact(contactId, contactsToRender) {
     document.querySelectorAll('.recent-contact-item').forEach(item => {
         item.classList.remove('active');
@@ -160,7 +44,7 @@ async function selectContact(contactId, contactsToRender) {
         selectedItem.classList.add('active');
     }
 
-    currentContact = (contactsToRender).find(c => c.id === contactId);
+    currentContact = contactsToRender.find(c => c.id === contactId);
 
     document.getElementById('chatTitle').innerHTML = `<span>${currentContact.name}</span>`;
 
@@ -170,6 +54,7 @@ async function selectContact(contactId, contactsToRender) {
     renderMessages(contactId);
 }
 
+// 渲染消息
 function renderMessages(contactId) {
     const messagesContainer = document.getElementById('chatMessages');
 
@@ -186,72 +71,47 @@ function renderMessages(contactId) {
         return;
     }
 
-    const messageGroups = groupMessagesByTime(messages[contactId]);
-
     const userAvatarSrc = userAvatar || (currentUsername ? currentUsername[0].toUpperCase() : '我');
+    
+    let lastDisplayedTime = null;
+    let messageElements = [];
 
-    messagesContainer.innerHTML = messageGroups.map(group => {
-        if (group.type === 'timestamp') {
-            return `<div class="message__timestamp">${group.time}</div>`;
-        } else {
-            const isMe = group.isMe;
-            const alignClass = isMe ? 'message-container--align-right' : '';
-
-            const avatarSrc = isMe ? (userAvatar || `data:text/html,<div style="width:40px;height:40px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:white;font-size:18px;border-radius:50%;">${currentUsername ? currentUsername[0].toUpperCase() : '我'}</div>`) : currentContact.avatar;
-
-            return `
-                <div class="message-container ${alignClass}">
-                    <div class="avatar">
-                        ${isMe && !userAvatar ? avatarSrc : `<img src="${avatarSrc}" alt="${isMe ? '我' : currentContact.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${isMe ? (currentUsername ? currentUsername[0].toUpperCase() : '我') : currentContact.name[0]}';">`}
-                    </div>
-                    <div class="message-content-wrapper">
-                        <div class="user-name">${isMe ? (currentUsername || '我') : currentContact.name}</div>
-                        <div class="msg-content-container">
-                            <div class="message-content">${escapeHtml(group.content)}</div>
-                        </div>
+    for (let i = 0; i < messages[contactId].length; i++) {
+        const msg = messages[contactId][i];
+        const isMe = msg.isMe;
+        const alignClass = isMe ? 'message-container--align-right' : '';
+        
+        const avatarSrc = isMe ? (userAvatar || `data:text/html,<div style="width:40px;height:40px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:white;font-size:18px;border-radius:50%;">${currentUsername ? currentUsername[0].toUpperCase() : '我'}</div>`) : currentContact.avatar;
+        
+        // 检查是否需要显示时间
+        const showTime = formatMessageTime(msg.timestamp, lastDisplayedTime);
+        if (showTime) {
+            messageElements.push(`
+                <div class="message__timestamp">${showTime}</div>
+            `);
+            lastDisplayedTime = msg.timestamp;
+        }
+        
+        messageElements.push(`
+            <div class="message-container ${alignClass}">
+                <div class="avatar">
+                    ${isMe && !userAvatar ? avatarSrc : `<img src="${avatarSrc}" alt="${isMe ? '我' : currentContact.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${isMe ? (currentUsername ? currentUsername[0].toUpperCase() : '我') : currentContact.name[0]}';">`}
+                </div>
+                <div class="message-content-wrapper">
+                    <div class="user-name">${isMe ? (currentUsername || '你') : currentContact.name}</div>
+                    <div class="msg-content-container">
+                        <div class="message-content">${escapeHtml(msg.content)}</div>
                     </div>
                 </div>
-            `;
-        }
-    }).join('');
-
+            </div>
+        `);
+    }
+    
+    messagesContainer.innerHTML = messageElements.join('');
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-function groupMessagesByTime(msgList) {
-    const groups = [];
-    let lastDate = '';
-    
-    msgList.forEach(msg => {
-        const msgDate = new Date(msg.timestamp);
-        const dateStr = msgDate.toLocaleDateString('zh-CN', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-        });
-        
-        if (dateStr !== lastDate) {
-            groups.push({ type: 'timestamp', time: dateStr });
-            lastDate = dateStr;
-        }
-        
-        groups.push({
-            type: 'message',
-            content: msg.content,
-            isMe: msg.isMe,
-            timestamp: msg.timestamp
-        });
-    });
-    
-    return groups;
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
+// 发送消息
 async function sendMessage() {
     const input = document.getElementById('messageInput');
     const content = input.value.trim();
@@ -281,45 +141,20 @@ async function sendMessage() {
     renderMessages(contactId);
 
     try {
-        const response = await fetch(`${API_BASE}/send_message`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contact_id: contactId,
-                contact_name: currentContact.name,
-                message: content
-            })
-        });
+        const result = await sendMessageAPI(contactId, currentContact.name, content);
 
-        if (response.status === 401) {
-            const data = await response.json();
-            if (data.require_login) {
-                alert('请先登录');
-                window.location.href = '/login';
-                return;
-            }
-        }
+        if (result && result.reply) {
+            const replyMessage = {
+                content: result.reply,
+                isMe: false,
+                timestamp: result.timestamp || new Date().toISOString()
+            };
 
-        if (response.ok) {
-            const data = await response.json();
+            messages[contactId].push(replyMessage);
 
-            if (data.reply) {
-                const replyMessage = {
-                    content: data.reply,
-                    isMe: false,
-                    timestamp: data.timestamp || new Date().toISOString()
-                };
-
-                messages[contactId].push(replyMessage);
-
-                setTimeout(() => {
-                    renderMessages(contactId);
-                }, 500);
-            }
-        } else {
-            console.error('发送消息失败:', response.statusText);
+            setTimeout(() => {
+                renderMessages(contactId);
+            }, 500);
         }
     } catch (error) {
         console.error('发送消息时出错:', error);
@@ -336,6 +171,14 @@ async function sendMessage() {
         }, 500);
     }
 }
+
+// 加载初始数据
+async function loadInitialData() {
+    const contactsData = await loadUserContacts();
+    renderContactList(contactsData);
+}
+
+// ==================== 事件监听 ====================
 
 function setupEventListeners() {
     document.getElementById('sendBtn').addEventListener('click', sendMessage);
@@ -360,4 +203,15 @@ function setupEventListeners() {
     });
 }
 
+// 初始化应用
+function init() {
+    checkAuth().then(isAuthenticated => {
+        if (isAuthenticated) {
+            setupEventListeners();
+            loadInitialData();
+        }
+    });
+}
+
+// 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', init);

@@ -49,6 +49,7 @@ def login_page():
     """登录页面"""
     return app.send_static_file('login.html')
 
+# 修改 app.py 中的 get_contacts 函数
 @app.route('/api/contacts', methods=['GET'])
 @login_required
 def get_contacts():
@@ -61,7 +62,8 @@ def get_contacts():
         for contact in DEFAULT_CONTACTS:
             messages = storage.get_messages(contact['id'])
             preview = ''
-            last_time = ''
+            last_time = ''      # 前端显示用的格式化时间
+            last_raw_timestamp = ''  # 完整的原始时间戳，用于前端格式化
             
             if messages:
                 last_msg = messages[-1]
@@ -71,18 +73,26 @@ def get_contacts():
                 timestamp = last_msg.get('timestamp', '')
                 if timestamp:
                     try:
+                        # 解析时间戳
                         dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                        # 存储完整的原始时间戳（ISO格式）
+                        last_raw_timestamp = timestamp
+                        # 保留一个格式化的时间用于旧版兼容
                         last_time = dt.strftime('%H:%M')
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.error(f"解析时间戳失败: {timestamp}, 错误: {e}")
             
             contacts_list.append({
                 'id': contact['id'],
                 'name': contact['name'],
                 'avatar': contact['avatar'],
                 'preview': preview,
-                'lastTime': last_time
+                'lastTime': last_raw_timestamp,  # 改为返回完整时间戳
+                'lastTimeFormatted': last_time   # 可选：保留格式化版本
             })
+        
+        # 按最后消息时间降序排序（最近的在上）
+        contacts_list.sort(key=lambda x: x['lastTime'], reverse=True)
         
         logger.info(f"用户 {username} 获取联系人列表: {len(contacts_list)} 个联系人")
         return jsonify({
