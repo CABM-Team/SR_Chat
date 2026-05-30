@@ -262,7 +262,6 @@ body {
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -270,6 +269,8 @@ body {
     font-size: 24px;
     flex-shrink: 0;
     overflow: hidden;
+    border: 1px solid rgba(200, 200, 200, 0.6);
+    box-sizing: border-box;
 }
 
 .message-container .avatar img {
@@ -457,4 +458,18 @@ body {
 
 .sidebar-nav .q-icon:hover {
     transform: scale(1.2);
+}
+
+.message-container--align-right .user-name {
+    text-align: right;
+}
+
+.contact-name-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+.contact-time {
+    color: gray;
+    font-size: 12px;
 }

@@ -10,13 +10,18 @@ async function checkAuth() {
         const response = await fetch(`${API_BASE}/auth/check_session`);
 
         if (!response.ok) {
-            throw new Error('未登录');
+            // 不要立即跳转，先检查是否是网络问题
+            if (response.status === 401 || response.status === 403) {
+                redirectToLogin();
+            }
+            return false;
         }
 
         const data = await response.json();
 
         if (!data.success || !data.logged_in) {
-            throw new Error('未登录');
+            redirectToLogin();
+            return false;
         }
 
         currentUsername = data.username;
@@ -27,11 +32,23 @@ async function checkAuth() {
 
         return true;
     } catch (error) {
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('userAvatar');
-        window.location.href = '/login';
+        console.error('Auth check error:', error);
+        // 网络错误时不跳转，显示错误提示
         return false;
     }
+}
+
+// 添加防重复跳转的标志
+let isRedirecting = false;
+
+function redirectToLogin() {
+    if (isRedirecting) return;
+    if (window.location.pathname === '/login') return;
+    
+    isRedirecting = true;
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('userAvatar');
+    window.location.href = '/login';
 }
 
 async function loadUserContacts() {
@@ -115,11 +132,13 @@ function renderContactList(contactsData) {
             <div class="avatar">
                 <img src="${contact.avatar}" alt="${contact.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${contact.name[0]}';">
             </div>
-            <div class="contact-info">
-                <div class="contact-name">${contact.name}</div>
+           <div class="contact-info">
+                <div class="contact-name-row">
+                    <span class="contact-name">${contact.name}</span>
+                    <span class="contact-time">${contact.lastTime || ''}</span>
+                </div>
                 <div class="contact-preview">${contact.preview || ''}</div>
             </div>
-            <div class="contact-time">${contact.lastTime || ''}</div>
         </div>
     `).join('');
 
