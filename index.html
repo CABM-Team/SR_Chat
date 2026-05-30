@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星穹铁道 - 聊天界面</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app" class="container">
+        <div class="two-col-layout">
+            <aside class="two-col-layout__aside">
+                <div class="search-box">
+                    <input type="text" placeholder="搜索" class="search-input">
+                </div>
+                <div class="recent-contact-list" id="contactList">
+                </div>
+            </aside>
+            
+            <main class="two-col-layout__main">
+                <div class="header-area">
+                    <div class="corner-decoration"></div>
+                    <div class="chat-header">
+                        <h2 class="chat-header__contact-name" id="chatTitle">
+                            <span>选择聊天对象</span>
+                        </h2>
+                        <div class="chat-header__toolbar bar-icon">
+                            <button class="toolbar-btn">📞</button>
+                            <button class="toolbar-btn">🎥</button>
+                            <button class="toolbar-btn">⚙️</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chat-messages" id="chatMessages">
+                    <div class="empty-state">
+                        <p>选择一个聊天对象开始对话</p>
+                    </div>
+                </div>
+                
+                <div class="chat-input-area">
+                    <div class="chat-func-bar">
+                        <button class="func-btn" title="表情">😀</button>
+                        <button class="func-btn" title="图片">🖼️</button>
+                        <button class="func-btn" title="文件">📎</button>
+                        <button class="func-btn" title="截图">✂️</button>
+                    </div>
+                    <div class="input-wrapper">
+                        <textarea id="messageInput" placeholder="输入消息..." rows="3"></textarea>
+                    </div>
+                    <div class="send-btn-wrap">
+                        <button class="send-msg" id="sendBtn">发送</button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <script src="chat.js"></script>
+</body>
+</html>
