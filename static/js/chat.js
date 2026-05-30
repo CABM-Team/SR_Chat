@@ -1,67 +1,163 @@
 const API_BASE = 'http://localhost:5000/api';
 
-const contacts = [
-    { id: 1, name: '丹恒', avatar: 'avatars/丹恒.webp', preview: '最后一杯了，喝完就走', lastTime: '18:30' },
-    { id: 2, name: '姬子', avatar: 'avatars/姬子.webp', preview: '你的咖啡，谢谢', lastTime: '17:45' },
-    { id: 3, name: '瓦尔特', avatar: 'avatars/瓦尔特.webp', preview: '冷静点，别冲动', lastTime: '16:20' },
-    { id: 4, name: '银狼', avatar: 'avatars/银狼.webp', preview: '这波稳了', lastTime: '昨天' },
-    { id: 5, name: '三月七', avatar: 'avatars/三月七.webp', preview: '相机准备好了！', lastTime: '昨天' }
-];
-
 let currentContact = null;
 let messages = {};
+let currentUsername = null;
+let userAvatar = null;
 
-function init() {
-    renderContactList();
-    setupEventListeners();
+async function checkAuth() {
+    try {
+        const response = await fetch(`${API_BASE}/auth/check_session`);
+
+        if (!response.ok) {
+            throw new Error('未登录');
+        }
+
+        const data = await response.json();
+
+        if (!data.success || !data.logged_in) {
+            throw new Error('未登录');
+        }
+
+        currentUsername = data.username;
+        userAvatar = data.avatar_url;
+
+        localStorage.setItem('currentUser', currentUsername);
+        localStorage.setItem('userAvatar', userAvatar || '');
+
+        return true;
+    } catch (error) {
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('userAvatar');
+        window.location.href = '/login';
+        return false;
+    }
 }
 
-function renderContactList() {
+async function loadUserContacts() {
+    try {
+        const response = await fetch(`${API_BASE}/contacts`);
+
+        if (response.status === 401) {
+            const data = await response.json();
+            if (data.require_login) {
+                window.location.href = '/login';
+                return;
+            }
+        }
+
+        if (!response.ok) {
+            throw new Error('获取联系人失败');
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.data) {
+            return data.data;
+        } else {
+            throw new Error(data.error || '获取联系人失败');
+        }
+    } catch (error) {
+        console.error('加载联系人失败:', error);
+        return [];
+    }
+}
+
+async function loadUserMessages(contactId) {
+    try {
+        const response = await fetch(`${API_BASE}/get_messages/${contactId}`);
+
+        if (response.status === 401) {
+            const data = await response.json();
+            if (data.require_login) {
+                window.location.href = '/login';
+                return [];
+            }
+        }
+
+        if (!response.ok) {
+            throw new Error('获取消息失败');
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.data) {
+            return data.data;
+        } else {
+            return [];
+        }
+    } catch (error) {
+        console.error('加载消息失败:', error);
+        return [];
+    }
+}
+
+function init() {
+    checkAuth().then(isAuthenticated => {
+        if (isAuthenticated) {
+            setupEventListeners();
+            loadInitialData();
+        }
+    });
+}
+
+async function loadInitialData() {
+    const contactsData = await loadUserContacts();
+    renderContactList(contactsData);
+}
+
+function renderContactList(contactsData) {
     const listContainer = document.getElementById('contactList');
-    listContainer.innerHTML = contacts.map(contact => `
+    const contactsToRender = contactsData;
+
+    listContainer.innerHTML = contactsToRender.map(contact => `
         <div class="recent-contact-item" data-id="${contact.id}">
             <div class="avatar">
                 <img src="${contact.avatar}" alt="${contact.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${contact.name[0]}';">
             </div>
             <div class="contact-info">
                 <div class="contact-name">${contact.name}</div>
-                <div class="contact-preview">${contact.preview}</div>
+                <div class="contact-preview">${contact.preview || ''}</div>
             </div>
+            <div class="contact-time">${contact.lastTime || ''}</div>
         </div>
     `).join('');
 
     listContainer.querySelectorAll('.recent-contact-item').forEach(item => {
         item.addEventListener('click', () => {
             const contactId = parseInt(item.dataset.id);
-            selectContact(contactId);
+            selectContact(contactId, contactsToRender);
         });
     });
 }
 
-function selectContact(contactId) {
+async function selectContact(contactId, contactsToRender) {
     document.querySelectorAll('.recent-contact-item').forEach(item => {
         item.classList.remove('active');
     });
-    
+
     const selectedItem = document.querySelector(`.recent-contact-item[data-id="${contactId}"]`);
     if (selectedItem) {
         selectedItem.classList.add('active');
     }
-    
-    currentContact = contacts.find(c => c.id === contactId);
-    
+
+    currentContact = (contactsToRender).find(c => c.id === contactId);
+
     document.getElementById('chatTitle').innerHTML = `<span>${currentContact.name}</span>`;
-    
+
+    const userMessages = await loadUserMessages(contactId);
+    messages[contactId] = userMessages;
+
     renderMessages(contactId);
 }
 
 function renderMessages(contactId) {
     const messagesContainer = document.getElementById('chatMessages');
-    
+
     if (!messages[contactId]) {
         messages[contactId] = [];
     }
-    
+
     if (messages[contactId].length === 0) {
         messagesContainer.innerHTML = `
             <div class="empty-state">
@@ -70,23 +166,27 @@ function renderMessages(contactId) {
         `;
         return;
     }
-    
+
     const messageGroups = groupMessagesByTime(messages[contactId]);
-    
+
+    const userAvatarSrc = userAvatar || (currentUsername ? currentUsername[0].toUpperCase() : '我');
+
     messagesContainer.innerHTML = messageGroups.map(group => {
         if (group.type === 'timestamp') {
             return `<div class="message__timestamp">${group.time}</div>`;
         } else {
             const isMe = group.isMe;
             const alignClass = isMe ? 'message-container--align-right' : '';
-            
+
+            const avatarSrc = isMe ? (userAvatar || `data:text/html,<div style="width:40px;height:40px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:white;font-size:18px;border-radius:50%;">${currentUsername ? currentUsername[0].toUpperCase() : '我'}</div>`) : currentContact.avatar;
+
             return `
                 <div class="message-container ${alignClass}">
                     <div class="avatar">
-                        <img src="${isMe ? 'avatars/me.webp' : currentContact.avatar}" alt="${isMe ? '我' : currentContact.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${isMe ? '我' : currentContact.name[0]}';">
+                        ${isMe && !userAvatar ? avatarSrc : `<img src="${avatarSrc}" alt="${isMe ? '我' : currentContact.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${isMe ? (currentUsername ? currentUsername[0].toUpperCase() : '我') : currentContact.name[0]}';">`}
                     </div>
                     <div class="message-content-wrapper">
-                        <div class="user-name">${isMe ? '我' : currentContact.name}</div>
+                        <div class="user-name">${isMe ? (currentUsername || '我') : currentContact.name}</div>
                         <div class="msg-content-container">
                             <div class="message-content">${escapeHtml(group.content)}</div>
                         </div>
@@ -95,7 +195,7 @@ function renderMessages(contactId) {
             `;
         }
     }).join('');
-    
+
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
@@ -136,31 +236,31 @@ function escapeHtml(text) {
 async function sendMessage() {
     const input = document.getElementById('messageInput');
     const content = input.value.trim();
-    
+
     if (!content) return;
     if (!currentContact) {
         alert('请先选择一个聊天对象');
         return;
     }
-    
+
     const contactId = currentContact.id;
-    
+
     if (!messages[contactId]) {
         messages[contactId] = [];
     }
-    
+
     const userMessage = {
         content: content,
         isMe: true,
         timestamp: new Date().toISOString()
     };
-    
+
     messages[contactId].push(userMessage);
-    
+
     input.value = '';
-    
+
     renderMessages(contactId);
-    
+
     try {
         const response = await fetch(`${API_BASE}/send_message`, {
             method: 'POST',
@@ -173,19 +273,28 @@ async function sendMessage() {
                 message: content
             })
         });
-        
+
+        if (response.status === 401) {
+            const data = await response.json();
+            if (data.require_login) {
+                alert('请先登录');
+                window.location.href = '/login';
+                return;
+            }
+        }
+
         if (response.ok) {
             const data = await response.json();
-            
+
             if (data.reply) {
                 const replyMessage = {
                     content: data.reply,
                     isMe: false,
-                    timestamp: new Date().toISOString()
+                    timestamp: data.timestamp || new Date().toISOString()
                 };
-                
+
                 messages[contactId].push(replyMessage);
-                
+
                 setTimeout(() => {
                     renderMessages(contactId);
                 }, 500);

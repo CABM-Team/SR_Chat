@@ -1,40 +1,90 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, session, send_from_directory
 from flask_cors import CORS
 import logging
 from datetime import datetime
+from functools import wraps
+import os
+
+from auth import auth_bp
+from storage import get_user_storage
+from paths import DEFAULT_CONTACTS
 
 app = Flask(__name__)
 CORS(app)
 
+app.secret_key = 'sr_chat_secret_key_2024'
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_PERMANENT'] = True
+app.permanent_session_lifetime = 86400 * 7
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-contacts_db = {
-    1: {'id': 1, 'name': '丹恒', 'avatar': 'avatars/丹恒.webp'},
-    2: {'id': 2, 'name': '姬子', 'avatar': 'avatars/姬子.webp'},
-    3: {'id': 3, 'name': '瓦尔特', 'avatar': 'avatars/瓦尔特.webp'},
-    4: {'id': 4, 'name': '银狼', 'avatar': 'avatars/银狼.webp'},
-    5: {'id': 5, 'name': '三月七', 'avatar': 'avatars/三月七.webp'}
-}
+app.register_blueprint(auth_bp)
 
-conversation_history = {}
+def login_required(f):
+    """登录验证装饰器"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({
+                'success': False,
+                'error': '请先登录',
+                'require_login': True
+            }), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+def get_current_user():
+    """获取当前登录用户"""
+    return session.get('username')
+
+@app.route('/')
+def index():
+    """首页"""
+    return app.send_static_file('index.html')
+
+@app.route('/login')
+def login_page():
+    """登录页面"""
+    return app.send_static_file('login.html')
 
 @app.route('/api/contacts', methods=['GET'])
+@login_required
 def get_contacts():
     """获取所有聊天对象列表"""
     try:
-        contacts_list = [
-            {
+        username = get_current_user()
+        storage = get_user_storage(username)
+        
+        contacts_list = []
+        for contact in DEFAULT_CONTACTS:
+            messages = storage.get_messages(contact['id'])
+            preview = ''
+            last_time = ''
+            
+            if messages:
+                last_msg = messages[-1]
+                content = last_msg.get('content', '')
+                preview = content[:30] + '...' if len(content) > 30 else content
+                
+                timestamp = last_msg.get('timestamp', '')
+                if timestamp:
+                    try:
+                        dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                        last_time = dt.strftime('%H:%M')
+                    except:
+                        pass
+            
+            contacts_list.append({
                 'id': contact['id'],
                 'name': contact['name'],
                 'avatar': contact['avatar'],
-                'preview': get_last_message_preview(contact['id']),
-                'lastTime': get_last_message_time(contact['id'])
-            }
-            for contact in contacts_db.values()
-        ]
+                'preview': preview,
+                'lastTime': last_time
+            })
         
-        logger.info(f"获取联系人列表: {len(contacts_list)} 个联系人")
+        logger.info(f"用户 {username} 获取联系人列表: {len(contacts_list)} 个联系人")
         return jsonify({
             'success': True,
             'data': contacts_list
@@ -46,38 +96,10 @@ def get_contacts():
             'error': str(e)
         }), 500
 
-def get_last_message_preview(contact_id):
-    """获取最后一条消息的预览"""
-    if contact_id in conversation_history and conversation_history[contact_id]:
-        last_msg = conversation_history[contact_id][-1]
-        content = last_msg.get('content', '')
-        return content[:30] + '...' if len(content) > 30 else content
-    return ''
-
-def get_last_message_time(contact_id):
-    """获取最后消息时间"""
-    if contact_id in conversation_history and conversation_history[contact_id]:
-        last_msg = conversation_history[contact_id][-1]
-        timestamp = last_msg.get('timestamp', '')
-        if timestamp:
-            try:
-                dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-                return dt.strftime('%H:%M')
-            except:
-                return ''
-    return ''
-
 @app.route('/api/send_message', methods=['POST'])
+@login_required
 def send_message():
-    """
-    接收消息并返回固定回复
-    请求格式:
-    {
-        "contact_id": 1,
-        "contact_name": "丹恒",
-        "message": "用户发送的消息内容"
-    }
-    """
+    """接收消息并返回固定回复"""
     try:
         data = request.get_json()
         
@@ -89,9 +111,9 @@ def send_message():
         
         contact_id = data.get('contact_id')
         contact_name = data.get('contact_name', '未知')
-        message = data.get('message', '')
+        message_text = data.get('message', '')
         
-        if not message:
+        if not message_text:
             return jsonify({
                 'success': False,
                 'error': '消息内容不能为空'
@@ -103,32 +125,36 @@ def send_message():
                 'error': '联系人ID不能为空'
             }), 400
         
-        logger.info(f"收到来自 {contact_name}(ID:{contact_id}) 的消息: {message}")
+        username = get_current_user()
+        storage = get_user_storage(username)
         
-        if contact_id not in conversation_history:
-            conversation_history[contact_id] = []
+        logger.info(f"用户 {username} 收到来自 {contact_name}(ID:{contact_id}) 的消息: {message_text}")
         
-        conversation_history[contact_id].append({
-            'content': message,
+        current_time = datetime.now().isoformat()
+        
+        user_message = {
+            'content': message_text,
             'isMe': True,
-            'timestamp': datetime.now().isoformat()
-        })
+            'timestamp': current_time
+        }
+        storage.save_message(contact_id, user_message)
         
-        fixed_reply = get_fixed_reply(contact_name, message)
+        fixed_reply = get_fixed_reply(contact_name, message_text)
         
-        conversation_history[contact_id].append({
+        reply_message = {
             'content': fixed_reply,
             'isMe': False,
             'timestamp': datetime.now().isoformat()
-        })
+        }
+        storage.save_message(contact_id, reply_message)
         
-        logger.info(f"回复 {contact_name}: {fixed_reply}")
+        logger.info(f"用户 {username} 收到 {contact_name} 的回复: {fixed_reply}")
         
         return jsonify({
             'success': True,
             'reply': fixed_reply,
             'contact_id': contact_id,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': reply_message['timestamp']
         })
         
     except Exception as e:
@@ -139,10 +165,7 @@ def send_message():
         }), 500
 
 def get_fixed_reply(contact_name, message):
-    """
-    生成固定回复消息
-    可以根据需要修改这个函数来实现不同的回复逻辑
-    """
+    """生成固定回复消息"""
     fixed_replies = [
         f"【自动回复】收到你的消息了：{message}",
         f"【测试消息】这是来自 {contact_name} 对话的自动回复",
@@ -155,12 +178,16 @@ def get_fixed_reply(contact_name, message):
     return random.choice(fixed_replies)
 
 @app.route('/api/get_messages/<int:contact_id>', methods=['GET'])
+@login_required
 def get_messages(contact_id):
     """获取与指定联系人的聊天记录"""
     try:
-        messages = conversation_history.get(contact_id, [])
+        username = get_current_user()
+        storage = get_user_storage(username)
         
-        logger.info(f"获取联系人 {contact_id} 的消息记录: {len(messages)} 条")
+        messages = storage.get_messages(contact_id)
+        
+        logger.info(f"用户 {username} 获取联系人 {contact_id} 的消息记录: {len(messages)} 条")
         
         return jsonify({
             'success': True,
@@ -175,14 +202,15 @@ def get_messages(contact_id):
         }), 500
 
 @app.route('/api/clear_messages/<int:contact_id>', methods=['POST'])
+@login_required
 def clear_messages(contact_id):
     """清除与指定联系人的聊天记录"""
     try:
-        if contact_id in conversation_history:
-            conversation_history[contact_id] = []
-            logger.info(f"已清除联系人 {contact_id} 的聊天记录")
-        else:
-            conversation_history[contact_id] = []
+        username = get_current_user()
+        storage = get_user_storage(username)
+        
+        storage.clear_messages(contact_id)
+        logger.info(f"用户 {username} 已清除联系人 {contact_id} 的聊天记录")
         
         return jsonify({
             'success': True,
@@ -195,44 +223,82 @@ def clear_messages(contact_id):
             'error': str(e)
         }), 500
 
+@app.route('/api/user/settings', methods=['GET'])
+@login_required
+def get_user_settings():
+    """获取当前用户设置"""
+    try:
+        username = get_current_user()
+        storage = get_user_storage(username)
+        
+        settings = storage.get_settings()
+        
+        return jsonify({
+            'success': True,
+            'data': settings
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"获取用户设置失败: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/user/settings', methods=['POST'])
+@login_required
+def save_user_settings():
+    """保存用户设置"""
+    try:
+        username = get_current_user()
+        storage = get_user_storage(username)
+        
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': '请求数据不能为空'
+            }), 400
+        
+        for key, value in data.items():
+            storage.save_setting(key, value)
+        
+        logger.info(f"用户 {username} 保存设置成功")
+        
+        return jsonify({
+            'success': True,
+            'message': '设置已保存'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"保存用户设置失败: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/storage/<path:filename>')
+def serve_storage_file(filename):
+    """提供storage目录下的静态文件"""
+    try:
+        storage_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'storage')
+        return send_from_directory(storage_dir, filename)
+    except Exception as e:
+        logger.error(f"提供文件失败: {filename}, 错误: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': '文件不存在'
+        }), 404
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """健康检查接口"""
     return jsonify({
         'success': True,
         'status': 'running',
-        'timestamp': datetime.now().isoformat(),
-        'total_contacts': len(contacts_db),
-        'total_conversations': len(conversation_history)
-    })
-
-@app.route('/', methods=['GET'])
-def index():
-    """主页"""
-    return '''
-    <html>
-        <head><title>星穹铁道聊天 API</title></head>
-        <body>
-            <h1>🚀 星穹铁道聊天系统 API</h1>
-            <p>API服务正在运行中...</p>
-            <h2>可用接口:</h2>
-            <ul>
-                <li>GET /api/contacts - 获取联系人列表</li>
-                <li>POST /api/send_message - 发送消息并获取回复</li>
-                <li>GET /api/get_messages/<contact_id> - 获取消息记录</li>
-                <li>POST /api/clear_messages/<contact_id> - 清除聊天记录</li>
-                <li>GET /api/health - 健康检查</li>
-            </ul>
-        </body>
-    </html>
-    '''
+        'timestamp': datetime.now().isoformat()
+    }), 200
 
 if __name__ == '__main__':
-    logger.info("=" * 50)
-    logger.info("🚀 星穹铁道聊天系统 API 服务启动中...")
-    logger.info("=" * 50)
-    logger.info("服务地址: http://localhost:5000")
-    logger.info("API文档: http://localhost:5000/")
-    logger.info("=" * 50)
-    
     app.run(host='0.0.0.0', port=5000, debug=True)

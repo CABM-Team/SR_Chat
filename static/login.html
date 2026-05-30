@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 星穹铁道</title>
+    <link rel="stylesheet" href="static/css/auth.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <h1 class="auth-title">星穹铁道</h1>
+                <p class="auth-subtitle">欢迎回来，开拓者</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">登录</button>
+                <button class="auth-tab" data-tab="register">注册</button>
+            </div>
+
+            <form id="loginForm" class="auth-form active">
+                <div class="form-group">
+                    <label for="loginUsername">用户名</label>
+                    <input type="text" id="loginUsername" name="username" placeholder="请输入用户名" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="loginPassword">密码</label>
+                    <input type="password" id="loginPassword" name="password" placeholder="请输入密码" required>
+                </div>
+
+                <button type="submit" class="auth-btn">登录</button>
+            </form>
+
+            <form id="registerForm" class="auth-form">
+                <div class="form-group">
+                    <label for="registerUsername">用户名</label>
+                    <input type="text" id="registerUsername" name="username" placeholder="请输入用户名（3-20字符）" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerPassword">密码</label>
+                    <input type="password" id="registerPassword" name="password" placeholder="请输入密码（至少6位）" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">确认密码</label>
+                    <input type="password" id="confirmPassword" name="confirm_password" placeholder="请再次输入密码" required>
+                </div>
+
+                <div class="form-group avatar-upload">
+                    <label>头像（可选）</label>
+                    <div class="avatar-preview-container">
+                        <div class="avatar-preview" id="avatarPreview">
+                            <span class="avatar-placeholder">点击上传头像</span>
+                        </div>
+                        <input type="file" id="avatarInput" accept="image/*" style="display: none;">
+                        <button type="button" class="avatar-btn" onclick="document.getElementById('avatarInput').click()">
+                            选择图片
+                        </button>
+                        <button type="button" class="avatar-btn cancel-btn" id="cancelAvatarBtn" style="display: none;" onclick="cancelAvatar()">
+                            取消
+                        </button>
+                    </div>
+                    <div class="avatar-hint">支持 JPG、PNG 等格式，将自动裁剪为 200×200 并压缩为 WebP</div>
+                </div>
+
+                <button type="submit" class="auth-btn">注册</button>
+            </form>
+
+            <div class="auth-message" id="authMessage"></div>
+        </div>
+    </div>
+
+    <script src="static/js/auth.js"></script>
+</body>
+</html>
