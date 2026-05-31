@@ -134,6 +134,7 @@ function renderMessages(contactId) {
 // 发送消息
 async function sendMessage() {
     const input = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
     const content = input.value.trim();
 
     if (!content) return;
@@ -158,10 +159,17 @@ async function sendMessage() {
 
     input.value = '';
 
+    sendBtn.disabled = true;
+    sendBtn.classList.add('send-msg--disabled');
+    input.disabled = true;
+
     renderMessages(contactId);
+    showTypingIndicator(contactId);
 
     try {
         const result = await sendMessageAPI(contactId, currentContact.name, content);
+
+        removeTypingIndicator(contactId);
 
         if (result && result.reply) {
             const replyMessage = {
@@ -171,24 +179,57 @@ async function sendMessage() {
             };
 
             messages[contactId].push(replyMessage);
-
-            setTimeout(() => {
-                renderMessages(contactId);
-            }, 500);
+            renderMessages(contactId);
         }
     } catch (error) {
         console.error('发送消息时出错:', error);
-        
-        setTimeout(() => {
-            const replyMessage = {
-                content: '【测试回复】收到消息: ' + content,
-                isMe: false,
-                timestamp: new Date().toISOString()
-            };
-            
-            messages[contactId].push(replyMessage);
-            renderMessages(contactId);
-        }, 500);
+        removeTypingIndicator(contactId);
+
+        const replyMessage = {
+            content: '【连接失败】无法获取AI回复',
+            isMe: false,
+            timestamp: new Date().toISOString()
+        };
+        messages[contactId].push(replyMessage);
+        renderMessages(contactId);
+    } finally {
+        sendBtn.disabled = false;
+        sendBtn.classList.remove('send-msg--disabled');
+        input.disabled = false;
+        input.focus();
+    }
+}
+
+function showTypingIndicator(contactId) {
+    const messagesContainer = document.getElementById('chatMessages');
+    if (currentContact && currentContact.id !== contactId) return;
+
+    const typingHtml = `
+        <div class="message-container" id="typingIndicator">
+            <div class="avatar">
+                <img src="${currentContact.avatar}" alt="${currentContact.name}">
+            </div>
+            <div class="message-content-wrapper">
+                <div class="user-name">${escapeHtml(currentContact.name)}</div>
+                <div class="msg-content-container">
+                    <div class="typing-dots">
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    messagesContainer.insertAdjacentHTML('beforeend', typingHtml);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function removeTypingIndicator(contactId) {
+    if (currentContact && currentContact.id !== contactId) return;
+    const indicator = document.getElementById('typingIndicator');
+    if (indicator) {
+        indicator.remove();
     }
 }
 

@@ -4,6 +4,7 @@ releases
 storage/
 temp/
 screenshots/
+.env
 
 # Logs
 logs

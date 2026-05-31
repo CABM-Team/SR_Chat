@@ -4,12 +4,14 @@
 """
 
 import os
+import json
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
 RESOURCES_DIR = os.path.join(BASE_DIR, 'res')
 STORAGE_DIR = os.path.join(BASE_DIR, 'storage')
+CONTACTS_FILE = os.path.join(BASE_DIR, 'contacts.json')
 
 AVATARS_DIR = os.path.join(STATIC_DIR, 'avatars')
 BUBBLES_DIR = os.path.join(RESOURCES_DIR, 'bubbles')
@@ -18,13 +20,21 @@ BASE_URL = ''
 
 AVATARS_URL = f'{BASE_URL}/static/avatars'
 
-DEFAULT_CONTACTS = [
-    {'id': 1, 'name': '丹恒', 'avatar': f'{AVATARS_URL}/丹恒.webp'},
-    {'id': 2, 'name': '姬子', 'avatar': f'{AVATARS_URL}/姬子.webp'},
-    {'id': 3, 'name': '瓦尔特', 'avatar': f'{AVATARS_URL}/瓦尔特.webp'},
-    {'id': 4, 'name': '银狼', 'avatar': f'{AVATARS_URL}/银狼.webp'},
-    {'id': 5, 'name': '三月七', 'avatar': f'{AVATARS_URL}/三月七.webp'},
-]
+def _load_contacts():
+    """从 contacts.json 加载联系人配置"""
+    with open(CONTACTS_FILE, 'r', encoding='utf-8') as f:
+        raw = json.load(f)
+    contacts = []
+    for c in raw:
+        contacts.append({
+            'id': c['id'],
+            'name': c['name'],
+            'avatar': f"{AVATARS_URL}/{c['avatar_filename']}",
+            'prompt': c.get('prompt', ''),
+        })
+    return contacts
+
+DEFAULT_CONTACTS = _load_contacts()
 
 DEFAULT_SETTINGS = {
     'theme': 'default',

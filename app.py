@@ -8,6 +8,7 @@ import os
 from auth import auth_bp
 from storage import get_user_storage
 from paths import DEFAULT_CONTACTS
+from llm import chat as llm_chat
 
 app = Flask(__name__)
 CORS(app)
@@ -109,7 +110,6 @@ def get_contacts():
 @app.route('/api/send_message', methods=['POST'])
 @login_required
 def send_message():
-    """接收消息并返回固定回复"""
     try:
         data = request.get_json()
         
@@ -138,8 +138,6 @@ def send_message():
         username = get_current_user()
         storage = get_user_storage(username)
         
-        logger.info(f"用户 {username} 收到来自 {contact_name}(ID:{contact_id}) 的消息: {message_text}")
-        
         current_time = datetime.now().isoformat()
         
         user_message = {
@@ -149,20 +147,34 @@ def send_message():
         }
         storage.save_message(contact_id, user_message)
         
-        fixed_reply = get_fixed_reply(contact_name, message_text)
+        contact_prompt = ''
+        for c in DEFAULT_CONTACTS:
+            if c['id'] == contact_id:
+                contact_prompt = c.get('prompt', '')
+                break
+        
+        if not contact_prompt:
+            contact_prompt = f'你是{contact_name}，请用友好的语气回复用户。'
+        
+        conversation_history = storage.get_messages(contact_id)
+        
+        result = llm_chat(contact_prompt, conversation_history, message_text)
+        
+        if result['success']:
+            reply_content = result['reply']
+        else:
+            reply_content = f'【AI 请求失败】{result["error"]}'
         
         reply_message = {
-            'content': fixed_reply,
+            'content': reply_content,
             'isMe': False,
             'timestamp': datetime.now().isoformat()
         }
         storage.save_message(contact_id, reply_message)
         
-        logger.info(f"用户 {username} 收到 {contact_name} 的回复: {fixed_reply}")
-        
         return jsonify({
-            'success': True,
-            'reply': fixed_reply,
+            'success': result['success'],
+            'reply': reply_content,
             'contact_id': contact_id,
             'timestamp': reply_message['timestamp']
         })
@@ -173,19 +185,6 @@ def send_message():
             'success': False,
             'error': str(e)
         }), 500
-
-def get_fixed_reply(contact_name, message):
-    """生成固定回复消息"""
-    fixed_replies = [
-        f"【自动回复】收到你的消息了：{message}",
-        f"【测试消息】这是来自 {contact_name} 对话的自动回复",
-        f"【Demo】你发送了：{message[:20]}...",
-        f"【星穹铁道】仙舟联盟已收到你的信息",
-        f"【系统提示】消息 '{message}' 已收到",
-    ]
-    
-    import random
-    return random.choice(fixed_replies)
 
 @app.route('/api/get_messages/<int:contact_id>', methods=['GET'])
 @login_required
