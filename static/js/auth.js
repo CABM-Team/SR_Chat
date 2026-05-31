@@ -47,7 +47,7 @@ function initLoginForm() {
         btn.textContent = '登录中...';
 
         try {
-            const response = await fetch('/api/auth/login', {
+            const response = await fetch('/chat/auth/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -119,7 +119,7 @@ function initRegisterForm() {
                 avatarUrl = await uploadAvatar(username);
             }
 
-            const response = await fetch('/api/auth/register', {
+            const response = await fetch('/chat/auth/register', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -218,7 +218,7 @@ async function uploadAvatar(username) {
     if (!avatarData) return '';
 
     try {
-        const response = await fetch('/api/auth/upload_avatar', {
+        const response = await fetch('/chat/auth/upload_avatar', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -259,7 +259,7 @@ function cancelAvatar() {
 
 async function checkExistingSession() {
     try {
-        const response = await fetch('/api/auth/check_session');
+        const response = await fetch('/chat/auth/check_session');
         const data = await response.json();
 
         if (data.success && data.logged_in) {

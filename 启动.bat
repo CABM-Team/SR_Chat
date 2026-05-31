@@ -1,4 +1,4 @@
 
-start http://localhost:5050/
+start http://localhost:5000/
 
 python app.py

@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 from paths import create_user_storage
 
-auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+auth_bp = Blueprint('auth', __name__, url_prefix='/chat/auth')
 
 def get_users_db():
     """获取用户数据库文件路径"""

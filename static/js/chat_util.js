@@ -1,6 +1,6 @@
 // chat_util.js - 工具函数和常量
 
-const API_BASE = 'http://localhost:5050/api';
+const API_BASE = 'http://localhost:5000/chat';
 
 // 全局变量
 let currentContact = null;

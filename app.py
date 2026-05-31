@@ -51,7 +51,7 @@ def login_page():
     return app.send_static_file('login.html')
 
 # 修改 app.py 中的 get_contacts 函数
-@app.route('/api/contacts', methods=['GET'])
+@app.route('/chat/contacts', methods=['GET'])
 @login_required
 def get_contacts():
     """获取所有聊天对象列表"""
@@ -107,7 +107,7 @@ def get_contacts():
             'error': str(e)
         }), 500
 
-@app.route('/api/send_message', methods=['POST'])
+@app.route('/chat/send_message', methods=['POST'])
 @login_required
 def send_message():
     try:
@@ -192,7 +192,7 @@ def send_message():
             'error': str(e)
         }), 500
 
-@app.route('/api/get_messages/<int:contact_id>', methods=['GET'])
+@app.route('/chat/get_messages/<int:contact_id>', methods=['GET'])
 @login_required
 def get_messages(contact_id):
     """获取与指定联系人的聊天记录"""
@@ -216,7 +216,7 @@ def get_messages(contact_id):
             'error': str(e)
         }), 500
 
-@app.route('/api/clear_messages/<int:contact_id>', methods=['POST'])
+@app.route('/chat/clear_messages/<int:contact_id>', methods=['POST'])
 @login_required
 def clear_messages(contact_id):
     """清除与指定联系人的聊天记录"""
@@ -238,7 +238,7 @@ def clear_messages(contact_id):
             'error': str(e)
         }), 500
 
-@app.route('/api/recall_message', methods=['POST'])
+@app.route('/chat/recall_message', methods=['POST'])
 @login_required
 def recall_message():
     """撤回消息：删除指定索引及其之后的所有消息"""
@@ -263,7 +263,7 @@ def recall_message():
         logger.error(f"撤回消息失败: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/contact_identity/<int:contact_id>', methods=['GET'])
+@app.route('/chat/contact_identity/<int:contact_id>', methods=['GET'])
 @login_required
 def get_contact_identity(contact_id):
     """获取指定联系人的用户身份设定"""
@@ -282,7 +282,7 @@ def get_contact_identity(contact_id):
             'error': str(e)
         }), 500
 
-@app.route('/api/contact_identity/<int:contact_id>', methods=['POST'])
+@app.route('/chat/contact_identity/<int:contact_id>', methods=['POST'])
 @login_required
 def save_contact_identity(contact_id):
     """保存指定联系人的用户身份设定"""
@@ -303,7 +303,7 @@ def save_contact_identity(contact_id):
             'error': str(e)
         }), 500
 
-@app.route('/api/user/settings', methods=['GET'])
+@app.route('/chat/user/settings', methods=['GET'])
 @login_required
 def get_user_settings():
     """获取当前用户设置"""
@@ -325,7 +325,7 @@ def get_user_settings():
             'error': str(e)
         }), 500
 
-@app.route('/api/user/settings', methods=['POST'])
+@app.route('/chat/user/settings', methods=['POST'])
 @login_required
 def save_user_settings():
     """保存用户设置"""
@@ -371,7 +371,7 @@ def serve_storage_file(filename):
             'error': '文件不存在'
         }), 404
 
-@app.route('/api/health', methods=['GET'])
+@app.route('/chat/health', methods=['GET'])
 def health_check():
     """健康检查接口"""
     return jsonify({
@@ -381,4 +381,4 @@ def health_check():
     }), 200
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5050, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

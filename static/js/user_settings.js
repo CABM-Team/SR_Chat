@@ -178,7 +178,7 @@ async function handleLogout() {
     if (!confirm('确定要退出登录吗？')) return;
 
     try {
-        await fetch('/api/auth/logout', {
+        await fetch('/chat/auth/logout', {
             method: 'POST'
         });
     } finally {
