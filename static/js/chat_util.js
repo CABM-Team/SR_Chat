@@ -8,6 +8,7 @@ let messages = {};
 let currentUsername = null;
 let userAvatar = null;
 let isRedirecting = false;
+let contactsData = [];
 
 // ==================== 工具函数 ====================
 

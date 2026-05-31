@@ -21,9 +21,9 @@ function getBubbleClassName() {
 // ==================== UI 渲染函数 ====================
 
 // 渲染联系人列表
-function renderContactList(contactsData) {
+function renderContactList(contacts) {
     const listContainer = document.getElementById('contactList');
-    const contactsToRender = contactsData;
+    const contactsToRender = contacts || contactsData;
 
     listContainer.innerHTML = contactsToRender.map(contact => {
         const formattedTime = formatContactTime(contact.lastTime);
@@ -46,13 +46,13 @@ function renderContactList(contactsData) {
     listContainer.querySelectorAll('.recent-contact-item').forEach(item => {
         item.addEventListener('click', () => {
             const contactId = parseInt(item.dataset.id);
-            selectContact(contactId, contactsToRender);
+            selectContact(contactId);
         });
     });
 }
 
 // 选择联系人
-async function selectContact(contactId, contactsToRender) {
+async function selectContact(contactId) {
     document.querySelectorAll('.recent-contact-item').forEach(item => {
         item.classList.remove('active');
     });
@@ -62,7 +62,7 @@ async function selectContact(contactId, contactsToRender) {
         selectedItem.classList.add('active');
     }
 
-    currentContact = contactsToRender.find(c => c.id === contactId);
+    currentContact = contactsData.find(c => c.id === contactId);
 
     document.getElementById('chatTitle').innerHTML = `<span>${currentContact.name}</span>`;
 
@@ -149,6 +149,26 @@ function showErrorMessage(contactId, errorMsg) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
+// 将联系人移到列表顶部并更新时间和预览
+function moveContactToTop(contactId, preview) {
+    const index = contactsData.findIndex(c => c.id === contactId);
+    if (index === -1) return;
+
+    const contact = contactsData.splice(index, 1)[0];
+    contact.lastTime = new Date().toISOString();
+    contact.preview = preview;
+    contactsData.unshift(contact);
+
+    renderContactList();
+
+    if (currentContact) {
+        const activeItem = document.querySelector(`.recent-contact-item[data-id="${currentContact.id}"]`);
+        if (activeItem) {
+            activeItem.classList.add('active');
+        }
+    }
+}
+
 // 发送消息
 async function sendMessage() {
     const input = document.getElementById('messageInput');
@@ -184,8 +204,12 @@ async function sendMessage() {
     renderMessages(contactId);
     showTypingIndicator(contactId);
 
+    const contactName = currentContact.name;
+
     try {
-        const result = await sendMessageAPI(contactId, currentContact.name, content);
+        const result = await sendMessageAPI(contactId, contactName, content);
+
+        const isStillViewing = currentContact && currentContact.id === contactId;
 
         removeTypingIndicator(contactId);
 
@@ -197,14 +221,22 @@ async function sendMessage() {
             };
 
             messages[contactId].push(replyMessage);
-            renderMessages(contactId);
+            if (isStillViewing) {
+                renderMessages(contactId);
+            }
+            moveContactToTop(contactId, result.reply);
         } else if (result && result.error) {
-            showErrorMessage(contactId, result.error);
+            if (isStillViewing) {
+                showErrorMessage(contactId, result.error);
+            }
         }
     } catch (error) {
         console.error('发送消息时出错:', error);
         removeTypingIndicator(contactId);
-        showErrorMessage(contactId, '连接失败，无法获取AI回复');
+        const isStillViewing = currentContact && currentContact.id === contactId;
+        if (isStillViewing) {
+            showErrorMessage(contactId, '连接失败，无法获取AI回复');
+        }
     } finally {
         sendBtn.disabled = false;
         sendBtn.classList.remove('send-msg--disabled');
@@ -282,7 +314,8 @@ async function handleClearChat() {
 
 // 加载初始数据
 async function loadInitialData() {
-    const contactsData = await loadUserContacts();
+    const data = await loadUserContacts();
+    contactsData = data;
     renderContactList(contactsData);
 }
 
