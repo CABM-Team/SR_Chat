@@ -1,0 +1,90 @@
+import os
+from PIL import Image
+
+def convert_png_to_webp(delete_original=True):
+    """
+    将当前目录下的所有 .png 文件转换为 .webp 格式
+    
+    Args:
+        delete_original (bool): 是否在转换后删除原始 PNG 文件
+    """
+    # 获取当前工作目录
+    current_dir = os.getcwd()
+    
+    # 获取当前目录下所有 .png 文件
+    png_files = [f for f in os.listdir(current_dir) if f.lower().endswith('.png')]
+    
+    if not png_files:
+        print("当前目录下没有找到 PNG 文件。")
+        return
+    
+    print(f"找到 {len(png_files)} 个 PNG 文件，开始转换...")
+    
+    success_count = 0
+    fail_count = 0
+    
+    for png_file in png_files:
+        try:
+            # 构建完整的文件路径
+            png_path = os.path.join(current_dir, png_file)
+            
+            # 生成 webp 文件名
+            webp_filename = os.path.splitext(png_file)[0] + '.webp'
+            webp_path = os.path.join(current_dir, webp_filename)
+            
+            # 打开并转换图片
+            with Image.open(png_path) as img:
+                # 如果图片有透明度，保留透明度
+                if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+                    img.save(webp_path, 'webp', lossless=False, quality=85)
+                else:
+                    img.save(webp_path, 'webp', quality=85)
+            
+            # 检查 webp 文件是否创建成功
+            if os.path.exists(webp_path):
+                # 删除原始 PNG 文件
+                if delete_original:
+                    os.remove(png_path)
+                    print(f"✓ 转换成功: {png_file} -> {webp_filename} (已删除原文件)")
+                else:
+                    print(f"✓ 转换成功: {png_file} -> {webp_filename}")
+                success_count += 1
+            else:
+                print(f"✗ 转换失败: {png_file} (webp 文件未创建)")
+                fail_count += 1
+                
+        except Exception as e:
+            print(f"✗ 转换失败: {png_file} - 错误信息: {str(e)}")
+            fail_count += 1
+    
+    # 输出转换统计信息
+    print("\n" + "="*50)
+    print(f"转换完成！成功: {success_count} 个，失败: {fail_count} 个")
+    if success_count > 0:
+        total_saved = sum(1 for _ in png_files if not os.path.exists(os.path.join(current_dir, _)))
+        print(f"已删除 {total_saved} 个原始 PNG 文件")
+    print("="*50)
+
+def main():
+    """主函数"""
+    # 检查是否安装了 Pillow 库
+    try:
+        from PIL import Image
+    except ImportError:
+        print("错误: 未安装 Pillow 库。")
+        print("请运行以下命令安装: pip install Pillow")
+        return
+    
+    # 询问用户是否确认删除原文件
+    print("警告: 此程序将把当前目录下所有 PNG 文件转换为 WebP 格式并删除原文件。")
+    confirm = input("是否继续？(y/N): ").strip().lower()
+    
+    if confirm == 'y':
+        convert_png_to_webp(delete_original=True)
+    else:
+        print("操作已取消。")
+        if confirm == 'n':
+            print("你可以修改代码中的 delete_original=False 来保留原文件。")
+
+if __name__ == "__main__":
+    main()
