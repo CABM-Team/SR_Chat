@@ -115,6 +115,20 @@ class StorageManager:
         
         with open(settings_file, 'r', encoding='utf-8') as f:
             return json.load(f)
+
+    def get_contact_identity(self, contact_id):
+        """获取指定联系人的用户身份设定"""
+        settings = self.get_settings()
+        identities = settings.get('contact_identities', {})
+        return identities.get(str(contact_id), '')
+
+    def save_contact_identity(self, contact_id, identity):
+        """保存指定联系人的用户身份设定"""
+        settings = self.get_settings()
+        if 'contact_identities' not in settings:
+            settings['contact_identities'] = {}
+        settings['contact_identities'][str(contact_id)] = identity
+        self.save_settings(settings)
     
     def _get_default_settings(self):
         """获取默认设置"""

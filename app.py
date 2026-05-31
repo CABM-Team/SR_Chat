@@ -152,9 +152,12 @@ def send_message():
             if c['id'] == contact_id:
                 contact_prompt = c.get('prompt', '')
                 break
+
+        user_identity = storage.get_contact_identity(contact_id)
+        if user_identity:
+            contact_prompt += f'\n用户是{user_identity}'
         
-        if not contact_prompt:
-            contact_prompt = f'你是{contact_name}，请用友好的语气回复用户。'
+        contact_prompt+="\n你正在和用户线上聊天。"
         
         conversation_history = storage.get_messages(contact_id)
         
@@ -227,6 +230,46 @@ def clear_messages(contact_id):
         })
     except Exception as e:
         logger.error(f"清除消息记录失败: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/contact_identity/<int:contact_id>', methods=['GET'])
+@login_required
+def get_contact_identity(contact_id):
+    """获取指定联系人的用户身份设定"""
+    try:
+        username = get_current_user()
+        storage = get_user_storage(username)
+        identity = storage.get_contact_identity(contact_id)
+        return jsonify({
+            'success': True,
+            'identity': identity
+        })
+    except Exception as e:
+        logger.error(f"获取身份设定失败: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/contact_identity/<int:contact_id>', methods=['POST'])
+@login_required
+def save_contact_identity(contact_id):
+    """保存指定联系人的用户身份设定"""
+    try:
+        username = get_current_user()
+        storage = get_user_storage(username)
+        data = request.get_json()
+        identity = data.get('identity', '') if data else ''
+        storage.save_contact_identity(contact_id, identity)
+        return jsonify({
+            'success': True,
+            'message': '身份设定已保存'
+        })
+    except Exception as e:
+        logger.error(f"保存身份设定失败: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)

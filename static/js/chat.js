@@ -66,6 +66,14 @@ async function selectContact(contactId, contactsToRender) {
 
     document.getElementById('chatTitle').innerHTML = `<span>${currentContact.name}</span>`;
 
+    closeChatMenu();
+
+    const identityInput = document.getElementById('identityInput');
+    if (identityInput) {
+        const identity = await getContactIdentity(contactId);
+        identityInput.value = identity;
+    }
+
     const userMessages = await loadUserMessages(contactId);
     messages[contactId] = userMessages;
 
@@ -233,6 +241,40 @@ function removeTypingIndicator(contactId) {
     }
 }
 
+function toggleChatMenu() {
+    const dropdown = document.getElementById('chatMenuDropdown');
+    dropdown.classList.toggle('open');
+}
+
+function closeChatMenu() {
+    const dropdown = document.getElementById('chatMenuDropdown');
+    dropdown.classList.remove('open');
+}
+
+async function handleSaveIdentity() {
+    if (!currentContact) return;
+    const input = document.getElementById('identityInput');
+    const identity = input.value.trim();
+    const result = await saveContactIdentity(currentContact.id, identity);
+    if (result && result.success) {
+        const btn = document.getElementById('saveIdentityBtn');
+        btn.textContent = '已保存';
+        setTimeout(() => { btn.textContent = ' 保存 '; }, 1200);
+    }
+}
+
+async function handleClearChat() {
+    if (!currentContact) return;
+    const confirmed = confirm(`确定要清空与「${currentContact.name}」的所有对话记录吗？此操作不可撤销。`);
+    if (!confirmed) return;
+    const result = await clearMessagesAPI(currentContact.id);
+    if (result && result.success) {
+        messages[currentContact.id] = [];
+        renderMessages(currentContact.id);
+        closeChatMenu();
+    }
+}
+
 // 加载初始数据
 async function loadInitialData() {
     const contactsData = await loadUserContacts();
@@ -251,15 +293,26 @@ function setupEventListeners() {
         }
     });
     
+    document.getElementById('chatMenuBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleChatMenu();
+    });
+
+    document.getElementById('saveIdentityBtn').addEventListener('click', handleSaveIdentity);
+
+    document.getElementById('clearChatBtn').addEventListener('click', handleClearChat);
+
+    document.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('chatMenuDropdown');
+        const btn = document.getElementById('chatMenuBtn');
+        if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+            closeChatMenu();
+        }
+    });
+
     document.querySelectorAll('.func-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             console.log('功能按钮点击:', btn.title);
-        });
-    });
-    
-    document.querySelectorAll('.toolbar-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            console.log('工具栏按钮点击:', btn.textContent);
         });
     });
 }

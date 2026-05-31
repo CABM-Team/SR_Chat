@@ -270,3 +270,46 @@ async function sendMessageAPI(contactId, contactName, content) {
         return null;
     }
 }
+
+async function getContactIdentity(contactId) {
+    try {
+        const response = await fetch(`${API_BASE}/contact_identity/${contactId}`);
+        if (response.ok) {
+            const data = await response.json();
+            return data.success ? data.identity : '';
+        }
+    } catch (error) {
+        console.error('获取身份设定失败:', error);
+    }
+    return '';
+}
+
+async function saveContactIdentity(contactId, identity) {
+    try {
+        const response = await fetch(`${API_BASE}/contact_identity/${contactId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identity })
+        });
+        if (response.ok) {
+            return await response.json();
+        }
+    } catch (error) {
+        console.error('保存身份设定失败:', error);
+    }
+    return null;
+}
+
+async function clearMessagesAPI(contactId) {
+    try {
+        const response = await fetch(`${API_BASE}/clear_messages/${contactId}`, {
+            method: 'POST'
+        });
+        if (response.ok) {
+            return await response.json();
+        }
+    } catch (error) {
+        console.error('清空对话失败:', error);
+    }
+    return null;
+}

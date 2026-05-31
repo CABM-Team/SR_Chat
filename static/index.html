@@ -38,9 +38,24 @@
                             <span>选择聊天对象</span>
                         </h2>
                         <div class="chat-header__toolbar bar-icon">
-                            <button class="toolbar-btn">📞</button>
-                            <button class="toolbar-btn">🎥</button>
-                            <button class="toolbar-btn">⚙️</button>
+                            <button class="toolbar-btn" id="chatMenuBtn" title="菜单">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                                </svg>
+                            </button>
+                            <div class="chat-menu-dropdown" id="chatMenuDropdown">
+                                <div class="chat-menu-section">
+                                    <label class="chat-menu-label">身份设定</label>
+                                    <div class="chat-menu-identity-row">
+                                        <input type="text" id="identityInput" class="chat-menu-input" placeholder="如：开拓者" maxlength="50">
+                                        <button class="chat-menu-save-btn" id="saveIdentityBtn"> 保存 </button>
+                                    </div>
+                                </div>
+                                <div class="chat-menu-divider"></div>
+                                <button class="chat-menu-danger-btn" id="clearChatBtn">清空对话</button>
+                            </div>
                         </div>
                     </div>
                 </div>

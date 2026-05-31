@@ -210,6 +210,7 @@ body {
     gap: 15px;
     opacity: 0;
     transition: opacity 0.7s ease;
+    position: relative;
 }
 
 .chat-header:hover .chat-header__toolbar {
@@ -223,10 +224,113 @@ body {
     cursor: pointer;
     padding: 5px;
     transition: transform 0.2s;
+    color: rgb(80, 80, 80);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .toolbar-btn:hover {
     transform: scale(1.2);
+}
+
+.chat-menu-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    min-width: 260px;
+    background: rgb(252, 252, 252);
+    border: 1px solid rgba(172, 172, 172, 0.5);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    padding: 14px 16px;
+}
+
+.chat-menu-dropdown.open {
+    display: block;
+}
+
+.chat-menu-section {
+    margin-bottom: 0;
+}
+
+.chat-menu-label {
+    display: block;
+    font-size: 13px;
+    font-weight: bold;
+    color: rgb(100, 100, 100);
+    margin-bottom: 8px;
+}
+
+.chat-menu-identity-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.chat-menu-input {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1.5px solid rgba(172, 172, 172, 0.6);
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    background: #fff;
+    color: rgb(40, 40, 40);
+    transition: border-color 0.2s;
+}
+
+.chat-menu-input:focus {
+    border-color: rgba(102, 126, 234, 0.7);
+}
+
+.chat-menu-save-btn {
+    padding: 7px 16px;
+    background-color: rgb(234, 234, 234);
+    border: 1px solid rgba(172, 172, 172, 0.6);
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    color: rgb(60, 60, 60);
+    transition: background-color 0.2s;
+    white-space: nowrap;
+}
+
+.chat-menu-save-btn:hover {
+    background-color: rgb(210, 210, 210);
+}
+
+.chat-menu-divider {
+    height: 1px;
+    background: rgba(172, 172, 172, 0.4);
+    margin: 12px 0;
+}
+
+.chat-menu-danger-btn {
+    display: block;
+    width: 100%;
+    padding: 8px 0;
+    background: none;
+    border: 1.5px solid rgba(200, 60, 60, 0.5);
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: bold;
+    color: rgb(200, 60, 60);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.chat-menu-danger-btn:hover {
+    background-color: rgba(200, 60, 60, 0.08);
+    border-color: rgba(200, 60, 60, 0.8);
 }
 
 .chat-messages {
