@@ -186,7 +186,7 @@ body {
     background-size: 130px 130px;
     background-repeat: no-repeat;
     opacity: 0.75;
-    pointer-events: none;
+    /* pointer-events: none; */
     z-index: 10;
 }
 
@@ -674,4 +674,107 @@ body {
 
 .recall-btn:hover svg {
     fill: rgb(120, 120, 120);
+}
+
+/* 响应式设计 - 移动端适配 */
+@media screen and (max-width: 768px) {
+    .two-col-layout {
+        padding: 0;
+        gap: 0;
+    }
+
+    .two-col-layout__aside {
+        width: 100%;
+        margin: 0;
+        border-radius: 0;
+        border: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        z-index: 50;
+    }
+
+    .two-col-layout__aside.hidden-mobile {
+        display: none !important;
+    }
+
+    .two-col-layout__main {
+        width: 100%;
+        border-radius: 0;
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        z-index: 40;
+    }
+
+    .two-col-layout__main::before {
+        display: none;
+    }
+
+    .two-col-layout__main.hidden-mobile {
+        display: none !important;
+    }
+
+    .corner-decoration {
+        width: 80px;
+        height: 80px;
+        background-size: 80px 80px;
+    }
+
+    .chat-header {
+        padding: 15px 15px 10px 100px;
+    }
+
+    .back-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: bold;
+        color: rgb(80, 80, 80);
+        transition: all 0.3s ease;
+        margin-right: 10px;
+        /* 往右下角偏移 */
+        transform: translate(32px, 12px);
+    }
+
+    .back-btn:hover {
+        transform: scale(1.1);
+    }
+
+    .back-btn:active {
+        transform: scale(0.95);
+    }
+
+    .chat-header__contact-name {
+        display: flex;
+        align-items: center;
+        flex: 1;
+    }
+
+    .recent-contact-item {
+        padding: 12px;
+    }
+
+    .recent-contact-item .avatar {
+        width: 45px;
+        height: 45px;
+        margin-right: 12px;
+        font-size: 18px;
+    }
+
+    .recent-contact-item .contact-name {
+        font-size: 14px;
+    }
+
+    .recent-contact-item .contact-preview {
+        font-size: 12px;
+    }
 }

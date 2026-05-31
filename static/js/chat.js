@@ -78,6 +78,14 @@ async function selectContact(contactId) {
     messages[contactId] = userMessages;
 
     renderMessages(contactId);
+
+    console.log('选择联系人后，检查是否需要切换到移动端视图');
+    if (isMobileView()) {
+        console.log('是移动端，开始切换视图');
+        showMobileChatView();
+    } else {
+        console.log('不是移动端，保持原有布局');
+    }
 }
 
 // 渲染消息
@@ -355,6 +363,43 @@ async function loadInitialData() {
 
 // ==================== 事件监听 ====================
 
+// 移动端视图切换
+function isMobileView() {
+    const isMobile = window.innerWidth <= 768;
+    console.log('视口宽度:', window.innerWidth, '是否是移动端:', isMobile);
+    return isMobile;
+}
+
+function showMobileContactList() {
+    const aside = document.querySelector('.two-col-layout__aside');
+    const main = document.querySelector('.two-col-layout__main');
+    
+    if (aside) {
+        aside.classList.remove('hidden-mobile');
+    }
+    if (main) {
+        main.classList.add('hidden-mobile');
+    }
+}
+
+function showMobileChatView() {
+    const aside = document.querySelector('.two-col-layout__aside');
+    const main = document.querySelector('.two-col-layout__main');
+    
+    if (aside) {
+        aside.classList.add('hidden-mobile');
+    }
+    if (main) {
+        main.classList.remove('hidden-mobile');
+    }
+}
+
+function handleBackToContacts() {
+    if (isMobileView()) {
+        showMobileContactList();
+    }
+}
+
 function setupEventListeners() {
     document.getElementById('sendBtn').addEventListener('click', sendMessage);
     
@@ -388,6 +433,21 @@ function setupEventListeners() {
         btn.addEventListener('click', () => {
             console.log('功能按钮点击:', btn.title);
         });
+    });
+
+    document.getElementById('backToContactsBtn').addEventListener('click', handleBackToContacts);
+
+    window.addEventListener('resize', () => {
+        if (!isMobileView()) {
+            const aside = document.querySelector('.two-col-layout__aside');
+            const main = document.querySelector('.two-col-layout__main');
+            if (aside) {
+                aside.classList.remove('hidden-mobile');
+            }
+            if (main) {
+                main.classList.remove('hidden-mobile');
+            }
+        }
     });
 }
 
