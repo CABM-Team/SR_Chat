@@ -174,12 +174,16 @@ async function saveUserSettings() {
     }
 }
 
-function handleLogout() {
-    if (confirm('确定要退出登录吗？')) {
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('userAvatar');
-        localStorage.removeItem('messages');
-        window.location.href = '/login';
+async function handleLogout() {
+    if (!confirm('确定要退出登录吗？')) return;
+
+    try {
+        await fetch('/api/auth/logout', {
+            method: 'POST'
+        });
+    } finally {
+        localStorage.clear();
+        window.location.replace('/login');
     }
 }
 
