@@ -157,7 +157,7 @@ def send_message():
         if user_identity:
             contact_prompt += f'\n用户是{user_identity}'
         
-        contact_prompt+="\n你正在和用户线上聊天。"
+        contact_prompt+="\n你正在线上发消息聊天，因此请避免包含动作神态等。"
         
         conversation_history = storage.get_messages(contact_id)
         
@@ -165,22 +165,25 @@ def send_message():
         
         if result['success']:
             reply_content = result['reply']
+            reply_message = {
+                'content': reply_content,
+                'isMe': False,
+                'timestamp': datetime.now().isoformat()
+            }
+            storage.save_message(contact_id, reply_message)
+            
+            return jsonify({
+                'success': True,
+                'reply': reply_content,
+                'contact_id': contact_id,
+                'timestamp': reply_message['timestamp']
+            })
         else:
-            reply_content = f'【AI 请求失败】{result["error"]}'
-        
-        reply_message = {
-            'content': reply_content,
-            'isMe': False,
-            'timestamp': datetime.now().isoformat()
-        }
-        storage.save_message(contact_id, reply_message)
-        
-        return jsonify({
-            'success': result['success'],
-            'reply': reply_content,
-            'contact_id': contact_id,
-            'timestamp': reply_message['timestamp']
-        })
+            return jsonify({
+                'success': False,
+                'error': result['error'],
+                'contact_id': contact_id
+            })
         
     except Exception as e:
         logger.error(f"处理消息时出错: {str(e)}")

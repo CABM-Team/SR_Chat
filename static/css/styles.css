@@ -208,7 +208,7 @@ body {
 .chat-header__toolbar {
     display: flex;
     gap: 15px;
-    opacity: 0;
+    opacity: 1;
     transition: opacity 0.7s ease;
     position: relative;
 }

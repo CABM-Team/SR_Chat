@@ -263,11 +263,12 @@ async function sendMessageAPI(contactId, contactName, content) {
         }
     }
 
+    const data = await response.json();
     if (response.ok) {
-        return await response.json();
+        return data;
     } else {
         console.error('发送消息失败:', response.statusText);
-        return null;
+        return data;
     }
 }
 

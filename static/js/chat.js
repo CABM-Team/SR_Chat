@@ -139,6 +139,16 @@ function renderMessages(contactId) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
+// 显示错误提示
+function showErrorMessage(contactId, errorMsg) {
+    if (currentContact && currentContact.id !== contactId) return;
+    
+    const messagesContainer = document.getElementById('chatMessages');
+    const tipsHtml = `<div class="message__tips">${escapeHtml(errorMsg)}</div>`;
+    messagesContainer.insertAdjacentHTML('beforeend', tipsHtml);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
 // 发送消息
 async function sendMessage() {
     const input = document.getElementById('messageInput');
@@ -179,7 +189,7 @@ async function sendMessage() {
 
         removeTypingIndicator(contactId);
 
-        if (result && result.reply) {
+        if (result && result.success && result.reply) {
             const replyMessage = {
                 content: result.reply,
                 isMe: false,
@@ -188,18 +198,13 @@ async function sendMessage() {
 
             messages[contactId].push(replyMessage);
             renderMessages(contactId);
+        } else if (result && result.error) {
+            showErrorMessage(contactId, result.error);
         }
     } catch (error) {
         console.error('发送消息时出错:', error);
         removeTypingIndicator(contactId);
-
-        const replyMessage = {
-            content: '【连接失败】无法获取AI回复',
-            isMe: false,
-            timestamp: new Date().toISOString()
-        };
-        messages[contactId].push(replyMessage);
-        renderMessages(contactId);
+        showErrorMessage(contactId, '连接失败，无法获取AI回复');
     } finally {
         sendBtn.disabled = false;
         sendBtn.classList.remove('send-msg--disabled');
