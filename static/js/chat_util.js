@@ -315,3 +315,22 @@ async function clearMessagesAPI(contactId) {
     }
     return null;
 }
+
+async function recallMessageAPI(contactId, messageIndex) {
+    try {
+        const response = await fetch(`${API_BASE}/recall_message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contact_id: contactId,
+                message_index: messageIndex
+            })
+        });
+        if (response.ok) {
+            return await response.json();
+        }
+    } catch (error) {
+        console.error('撤回消息失败:', error);
+    }
+    return null;
+}

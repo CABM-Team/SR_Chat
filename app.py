@@ -238,6 +238,31 @@ def clear_messages(contact_id):
             'error': str(e)
         }), 500
 
+@app.route('/api/recall_message', methods=['POST'])
+@login_required
+def recall_message():
+    """撤回消息：删除指定索引及其之后的所有消息"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': '请求数据不能为空'}), 400
+
+        contact_id = data.get('contact_id')
+        message_index = data.get('message_index')
+
+        if contact_id is None or message_index is None:
+            return jsonify({'success': False, 'error': '缺少参数'}), 400
+
+        username = get_current_user()
+        storage = get_user_storage(username)
+        storage.delete_messages_from(contact_id, int(message_index))
+        logger.info(f"用户 {username} 撤回了联系人 {contact_id} 从索引 {message_index} 开始的消息")
+
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"撤回消息失败: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/contact_identity/<int:contact_id>', methods=['GET'])
 @login_required
 def get_contact_identity(contact_id):

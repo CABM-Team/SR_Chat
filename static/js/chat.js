@@ -119,9 +119,16 @@ function renderMessages(contactId) {
         }
         
         const bubbleClass = getBubbleClassName();
-        
+
+        const recallBtn = isMe ? `
+                    <button class="recall-btn" data-msg-index="${i}" title="撤回">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
+                        </svg>
+                    </button>` : '';
+
         messageElements.push(`
-            <div class="message-container ${alignClass}">
+            <div class="message-container ${alignClass}" data-msg-index="${i}">
                 <div class="avatar">
                     ${isMe && !userAvatar ? avatarSrc : `<img src="${avatarSrc}" alt="${isMe ? '我' : currentContact.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${isMe ? (currentUsername ? currentUsername[0].toUpperCase() : '我') : currentContact.name[0]}';">`}
                 </div>
@@ -129,6 +136,7 @@ function renderMessages(contactId) {
                     <div class="user-name">${isMe ? (currentUsername || '你') : currentContact.name}</div>
                     <div class="msg-content-container ${bubbleClass}">
                         <div class="message-content">${escapeHtml(msg.content)}</div>
+                        ${recallBtn}
                     </div>
                 </div>
             </div>
@@ -312,6 +320,32 @@ async function handleClearChat() {
     }
 }
 
+async function handleRecallMessage(e) {
+    const btn = e.target.closest('.recall-btn');
+    if (!btn) return;
+    if (!currentContact) return;
+
+    const msgIndex = parseInt(btn.dataset.msgIndex);
+    const contactId = currentContact.id;
+    const msgList = messages[contactId];
+    if (!msgList || msgIndex < 0 || msgIndex >= msgList.length) return;
+
+    const msgContent = msgList[msgIndex].content;
+    const totalToRecall = msgList.length - msgIndex;
+    const confirmed = confirm(`确定要撤回此条消息及之后的 ${totalToRecall-1} 条消息吗？`);
+    if (!confirmed) return;
+
+    const result = await recallMessageAPI(contactId, msgIndex);
+    if (result && result.success) {
+        messages[contactId] = msgList.slice(0, msgIndex);
+        const input = document.getElementById('messageInput');
+        if (msgContent) {
+            input.value = msgContent;
+        }
+        renderMessages(contactId);
+    }
+}
+
 // 加载初始数据
 async function loadInitialData() {
     const data = await loadUserContacts();
@@ -339,6 +373,8 @@ function setupEventListeners() {
     document.getElementById('saveIdentityBtn').addEventListener('click', handleSaveIdentity);
 
     document.getElementById('clearChatBtn').addEventListener('click', handleClearChat);
+
+    document.getElementById('chatMessages').addEventListener('click', handleRecallMessage);
 
     document.addEventListener('click', (e) => {
         const dropdown = document.getElementById('chatMenuDropdown');

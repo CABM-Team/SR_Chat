@@ -66,6 +66,27 @@ class StorageManager:
         with open(conversation_file, 'r', encoding='utf-8') as f:
             return json.load(f)
     
+    def delete_messages_from(self, contact_id, message_index):
+        """
+        删除指定联系人从 message_index 开始（包含）到末尾的所有消息
+        
+        Args:
+            contact_id: 联系人ID
+            message_index: 起始消息索引（包含）
+        """
+        conversation_file = self._get_conversation_file(contact_id)
+        
+        if not os.path.exists(conversation_file):
+            return
+        
+        with open(conversation_file, 'r', encoding='utf-8') as f:
+            messages = json.load(f)
+        
+        messages = messages[:message_index]
+        
+        with open(conversation_file, 'w', encoding='utf-8') as f:
+            json.dump(messages, f, ensure_ascii=False, indent=2)
+
     def clear_messages(self, contact_id):
         """清除联系人对话记录"""
         conversation_file = self._get_conversation_file(contact_id)
