@@ -313,31 +313,49 @@ def get_user_info():
 def upload_avatar():
     """上传并处理头像"""
     try:
-        data = request.get_json()
+        username = session.get('username')
+        image_file = None
         
-        if not data:
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            image_file = request.files.get('avatar')
+            if not image_file:
+                return jsonify({
+                    'success': False,
+                    'error': '未找到头像文件'
+                }), 400
+        else:
+            data = request.get_json()
+            if not data:
+                return jsonify({
+                    'success': False,
+                    'error': '请求数据不能为空'
+                }), 400
+            
+            username_from_data = data.get('username')
+            image_data = data.get('image_data')
+            
+            if not username_from_data or not image_data:
+                return jsonify({
+                    'success': False,
+                    'error': '用户名和头像数据不能为空'
+                }), 400
+            
+            import base64
+            from io import BytesIO
+            
+            image_data = image_data.split(',')[1] if ',' in image_data else image_data
+            image_bytes = base64.b64decode(image_data)
+            image_file = BytesIO(image_bytes)
+            
+            username = username_from_data
+        
+        if not username:
             return jsonify({
                 'success': False,
-                'error': '请求数据不能为空'
-            }), 400
+                'error': '用户未登录或会话已过期'
+            }), 401
         
-        username = data.get('username')
-        image_data = data.get('image_data')
-        
-        if not username or not image_data:
-            return jsonify({
-                'success': False,
-                'error': '用户名和头像数据不能为空'
-            }), 400
-        
-        import base64
         from utils.avatar import process_avatar
-        from io import BytesIO
-        
-        image_data = image_data.split(',')[1] if ',' in image_data else image_data
-        image_bytes = base64.b64decode(image_data)
-        image_file = BytesIO(image_bytes)
-        
         avatar_url = process_avatar(image_file, username)
         
         users = load_users()

@@ -31,6 +31,8 @@ DEFAULT_SETTINGS = {
     'displayNickname': False,
     'notifications': True,
     'soundEffects': True,
+    'bubble_style': 'default',
+    'avatar': None,
 }
 
 def get_resource_path(relative_path):

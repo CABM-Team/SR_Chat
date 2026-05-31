@@ -5,11 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>星穹铁道 - 聊天界面</title>
     <link rel="stylesheet" href="static/css/styles.css">
+    <link rel="stylesheet" href="static/css/user_settings.css">
+    <link rel="stylesheet" href="static/css/bubble_styles.css">
 </head>
 <body>
     <div id="app" class="container">
         <div class="two-col-layout">
             <aside class="two-col-layout__aside">
+                <div class="user-header" id="userHeader">
+                    <div class="user-header__avatar" id="userAvatarHeader">
+                        <img id="userAvatarImg" alt="头像">
+                    </div>
+                    <div class="user-header__info">
+                        <span class="user-header__name" id="userNameHeader">加载中...</span>
+                    </div>
+                    <button class="user-header__settings-btn" id="openSettingsBtn" title="设置">
+                        ⚙️
+                    </button>
+                </div>
                 <div class="search-box">
                     <input type="text" placeholder="搜索" class="search-input">
                 </div>
@@ -56,7 +69,58 @@
         </div>
     </div>
     
+    <div class="user-settings-modal" id="userSettingsModal">
+        <div class="user-settings-content">
+            <div class="settings-header">
+                <h2>用户设置</h2>
+                <button class="close-settings-btn" id="closeSettingsBtn">✕</button>
+            </div>
+            
+            <div class="settings-section">
+                <h3>头像</h3>
+                <div class="avatar-setting">
+                    <div class="avatar-preview" id="avatarPreview">
+                        <img id="settingsAvatarImg" alt="头像">
+                    </div>
+                    <div class="avatar-actions">
+                        <button class="btn btn-primary" id="changeAvatarBtn">更换头像</button>
+                        <input type="file" id="avatarInput" accept="image/*" style="display: none;">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3>聊天气泡（此功能存在问题，请选择默认）</h3>
+                <div class="bubble-setting">
+                    <div class="current-bubble" id="currentBubblePreview">
+                        <span>当前气泡：</span>
+                        <span id="currentBubbleName">默认</span>
+                    </div>
+                    <button class="btn btn-primary" id="changeBubbleBtn">选择气泡样式</button>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3>账号</h3>
+                <button class="btn btn-danger" id="logoutBtn">退出登录</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bubble-selector-modal" id="bubbleSelectorModal">
+        <div class="bubble-selector-content">
+            <div class="bubble-selector-header">
+                <h3>选择聊天气泡</h3>
+                <button class="close-selector-btn" id="closeBubbleSelectorBtn">✕</button>
+            </div>
+            <div class="bubble-list" id="bubbleList">
+            </div>
+        </div>
+    </div>
+    
     <script src="static/js/chat_util.js"></script>
+    <script src="static/js/user_settings.js"></script>
+    <script src="static/js/bubble_selector.js"></script>
     <script src="static/js/chat.js"></script>
 </body>
 </html>

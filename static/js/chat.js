@@ -1,5 +1,23 @@
 // chat_main.js - 主要UI逻辑
 
+// ==================== 工具函数 ====================
+
+function getBubbleClassName() {
+    const bubbleStyle = currentUserSettings && currentUserSettings.bubble ? currentUserSettings.bubble : 'default';
+    
+    const bubbleClasses = {
+        'default': '',
+        'bubbleStyle1': 'bubble-style1',
+        'bubbleStyle2': 'bubble-style2',
+        'bubbleStyle3': 'bubble-style3',
+        'bubbleStyle4': 'bubble-style4',
+        'bubbleStyle5': 'bubble-style5',
+        'bubbleStyle6': 'bubble-style6'
+    };
+    
+    return bubbleClasses[bubbleStyle] || '';
+}
+
 // ==================== UI 渲染函数 ====================
 
 // 渲染联系人列表
@@ -92,6 +110,8 @@ function renderMessages(contactId) {
             lastDisplayedTime = msg.timestamp;
         }
         
+        const bubbleClass = getBubbleClassName();
+        
         messageElements.push(`
             <div class="message-container ${alignClass}">
                 <div class="avatar">
@@ -99,7 +119,7 @@ function renderMessages(contactId) {
                 </div>
                 <div class="message-content-wrapper">
                     <div class="user-name">${isMe ? (currentUsername || '你') : currentContact.name}</div>
-                    <div class="msg-content-container">
+                    <div class="msg-content-container ${bubbleClass}">
                         <div class="message-content">${escapeHtml(msg.content)}</div>
                     </div>
                 </div>
@@ -209,6 +229,14 @@ function init() {
         if (isAuthenticated) {
             setupEventListeners();
             loadInitialData();
+            
+            if (typeof initUserSettings === 'function') {
+                initUserSettings();
+            }
+            
+            if (typeof initBubbleSelector === 'function') {
+                initBubbleSelector();
+            }
         }
     });
 }
