@@ -8,7 +8,7 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-MAX_CONTEXT_MESSAGES = 18
+MAX_CONTEXT_MESSAGES = 14
 
 def _get_headers():
     api_key = os.getenv('LLM_API_KEY', '')
@@ -50,10 +50,11 @@ def chat(system_prompt, conversation_history, user_message):
             'messages': messages,
             'stream': False,
             'temperature': 0.8,
+            'max_tokens': 1024,
             'enable_thinking': False
         }
 
-        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
+        response = requests.post(api_url, headers=headers, json=payload, timeout=120)
         response.raise_for_status()  # 检查 HTTP 错误
         
         result = response.json()
