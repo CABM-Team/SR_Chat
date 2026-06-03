@@ -2,7 +2,8 @@
 
 let currentUserSettings = {
     avatar: null,
-    bubble: 'default'
+    bubble: 'default',
+    safety_check: false
 };
 
 async function loadUserSettings() {
@@ -18,6 +19,7 @@ async function loadUserSettings() {
         if (result.success && result.data) {
             currentUserSettings.avatar = result.data.avatar || localStorage.getItem('userAvatar');
             currentUserSettings.bubble = result.data.bubble_style || 'default';
+            currentUserSettings.safety_check = result.data.safety_check == true;
         }
         
         updateUserHeader();
@@ -74,6 +76,11 @@ function updateSettingsModal() {
     
     if (currentBubbleName) {
         currentBubbleName.textContent = getBubbleDisplayName(currentUserSettings.bubble);
+    }
+    
+    const safetyToggle = document.getElementById('safetyCheckToggle');
+    if (safetyToggle) {
+        safetyToggle.checked = currentUserSettings.safety_check !== false;
     }
 }
 
@@ -155,7 +162,8 @@ async function saveUserSettings() {
             },
             body: JSON.stringify({
                 avatar: currentUserSettings.avatar,
-                bubble_style: currentUserSettings.bubble
+                bubble_style: currentUserSettings.bubble,
+                safety_check: currentUserSettings.safety_check
             })
         });
         
@@ -195,6 +203,7 @@ function setupUserSettingsEvents() {
     const avatarInput = document.getElementById('avatarInput');
     const changeBubbleBtn = document.getElementById('changeBubbleBtn');
     const logoutBtn = document.getElementById('logoutBtn');
+    const safetyCheckToggle = document.getElementById('safetyCheckToggle');
     
     if (openSettingsBtn) {
         openSettingsBtn.addEventListener('click', (e) => {
@@ -255,6 +264,13 @@ function setupUserSettingsEvents() {
     
     if (logoutBtn) {
         logoutBtn.addEventListener('click', handleLogout);
+    }
+    
+    if (safetyCheckToggle) {
+        safetyCheckToggle.addEventListener('change', async (e) => {
+            currentUserSettings.safety_check = e.target.checked;
+            await saveUserSettings();
+        });
     }
     
     document.addEventListener('keydown', (e) => {

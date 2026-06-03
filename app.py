@@ -9,6 +9,7 @@ from auth import auth_bp
 from storage import get_user_storage
 from paths import DEFAULT_CONTACTS
 from llm import chat as llm_chat
+from safety import check_safety
 
 app = Flask(__name__)
 CORS(app)
@@ -137,6 +138,18 @@ def send_message():
         
         username = get_current_user()
         storage = get_user_storage(username)
+        
+        # 安全检查（根据用户设置决定是否执行）
+        settings = storage.get_settings()
+        if settings.get('safety_check') == True:
+            is_safe, reason = check_safety(message_text)
+            if not is_safe:
+                logger.warning(f"用户 {username} 的消息未通过安全检查: {reason}")
+                return jsonify({
+                    'success': False,
+                    'error': f'消息已被星际和平公司拦截：{reason}',
+                    'reason': reason
+                }), 400
         
         current_time = datetime.now().isoformat()
         
