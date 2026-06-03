@@ -190,6 +190,10 @@ body {
     z-index: 10;
 }
 
+.back-btn {
+    display: none;
+}
+
 .chat-header {
     display: flex;
     justify-content: space-between;
@@ -419,7 +423,8 @@ body {
     font-size: 16px;
     font-weight: bold;
     line-height: 1.5;
-    word-wrap: break-word;
+    word-wrap: break-all;
+    overflow-wrap: anywhere;
 }
 
 .message-timestamp {
@@ -718,6 +723,7 @@ body {
     }
 
     .corner-decoration {
+        display: block;
         width: 80px;
         height: 80px;
         background-size: 80px 80px;
@@ -746,11 +752,13 @@ body {
     }
 
     .back-btn:hover {
-        transform: scale(1.1);
+        /* 保留基础偏移并添加缩放效果 */
+        transform: translate(32px, 12px) scale(1.1);
     }
 
     .back-btn:active {
-        transform: scale(0.95);
+        /* 保留基础偏移并添加点击缩放效果 */
+        transform: translate(32px, 12px) scale(0.95);
     }
 
     .chat-header__contact-name {
@@ -776,5 +784,33 @@ body {
 
     .recent-contact-item .contact-preview {
         font-size: 12px;
+    }
+
+    .message-container .avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+
+    .message-container {
+        max-width: 85%;
+        gap: 10px;
+    }
+
+    .message-content-wrapper {
+        gap: 4px;
+    }
+
+    .user-name {
+        font-size: 12px;
+        margin: 0 4px;
+    }
+
+    .msg-content-container {
+        font-size: 14px;
+    }
+
+    .chat-messages {
+        padding: 15px 20px;
     }
 }
