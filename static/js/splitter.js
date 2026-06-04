@@ -45,31 +45,146 @@ function splitText(text) {
     return segments.filter(seg => seg && seg.trim() !== '');
 }
 
+function getEffectiveLength(str) {
+    return str
+        .replace(/\.\.\./g, '')
+        .replace(/……/g, '')
+        .replace(/…/g, '')
+        .replace(/\s/g, '')
+        .length;
+}
 /**
  * 通过标点符号分句，并去除每句末尾的句号
  * @param {string} text - 待分句文本
  * @returns {Array} 分句后的数组
  */
 function splitByPunctuation(text) {
-    const punctuationPattern =
-        /(.+?(?:\.\.\.|……|[。！？!?]))/g;
-
     const segments = [];
 
-    let match;
-    let lastMatchEnd = 0;
+    const LEFT_BRACKETS = new Set([
+        '{',
+        '[',
+        '(',
+        '（',
+        '「'
+    ]);
 
-    while ((match = punctuationPattern.exec(text)) !== null) {
-        segments.push(match[0].trim().replace(/。$/, ''));
-        lastMatchEnd = punctuationPattern.lastIndex;
-    }
+    const RIGHT_BRACKETS = new Set([
+        '}',
+        ']',
+        ')',
+        '）',
+        '」'
+    ]);
 
-    if (lastMatchEnd < text.length) {
-        const remaining = text.substring(lastMatchEnd).trim();
-        if (remaining) {
-            segments.push(remaining.replace(/。$/, ''));
+    let current = '';
+    let i = 0;
+
+    function pushCurrent() {
+        const trimmed = current.trim();
+
+        if (!trimmed) {
+            current = '';
+            return;
         }
+
+        segments.push(
+            trimmed.replace(/。$/, '')
+        );
+
+        current = '';
     }
+
+    while (i < text.length) {
+        const ch = text[i];
+
+        // =========================
+        // 左括号
+        // =========================
+        if (LEFT_BRACKETS.has(ch)) {
+            pushCurrent();
+            current = ch;
+            i++;
+            continue;
+        }
+
+        // =========================
+        // 三个点 ...
+        // =========================
+        if (text.substr(i, 3) === '...') {
+            current += '...';
+
+            if (getEffectiveLength(current) >= 6) {
+                pushCurrent();
+            }
+
+            i += 3;
+            continue;
+        }
+
+        // =========================
+        // 中文省略号 ……
+        // =========================
+        if (text.substr(i, 2) === '……') {
+            current += '……';
+
+            if (getEffectiveLength(current) >= 6) {
+                pushCurrent();
+            }
+
+            i += 2;
+            continue;
+        }
+
+        // =========================
+        // 单个 …
+        // =========================
+        if (ch === '…') {
+            current += '…';
+
+            if (getEffectiveLength(current) >= 6) {
+                pushCurrent();
+            }
+
+            i++;
+            continue;
+        }
+
+        current += ch;
+
+        // =========================
+        // 普通句末符号
+        // =========================
+        if ('。！？!?'.includes(ch)) {
+
+            const nextChar = text[i + 1];
+
+            // 如果后面是右括号
+            // 例如：
+            // 第二句话。）
+            if (RIGHT_BRACKETS.has(nextChar)) {
+                i++;
+                continue;
+            }
+
+            pushCurrent();
+            i++;
+            continue;
+        }
+
+        // =========================
+        // 右括号
+        // =========================
+        if (RIGHT_BRACKETS.has(ch)) {
+            pushCurrent();
+            i++;
+            continue;
+        }
+
+        i++;
+    }
+
+    pushCurrent();
 
     return segments;
 }
