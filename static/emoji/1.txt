@@ -1,0 +1,49 @@
+import os
+from PIL import Image
+from pathlib import Path
+
+def convert_png_to_webp(input_path, output_path, size=(150, 150)):
+    """将PNG转换为指定尺寸的WebP，保留透明通道"""
+    try:
+        with Image.open(input_path) as img:
+            # 确保图片模式支持透明通道（RGBA）
+            if img.mode != 'RGBA':
+                img = img.convert('RGBA')
+            
+            # 调整尺寸（使用高质量重采样滤镜）
+            img_resized = img.resize(size, Image.Resampling.LANCZOS)
+            
+            # 保存为WebP（质量85，保留透明）
+            img_resized.save(output_path, 'WEBP', quality=85, lossless=False)
+            return True
+    except Exception as e:
+        print(f"处理失败 {input_path}: {e}")
+        return False
+
+def process_directory(root_dir='.'):
+    """遍历目录并处理所有PNG文件"""
+    root_path = Path(root_dir)
+    png_files = list(root_path.rglob('*.png')) + list(root_path.rglob('*.PNG'))
+    
+    if not png_files:
+        print("未找到任何PNG文件")
+        return
+    
+    for png_path in png_files:
+        # 生成输出路径（同目录，扩展名改为.webp）
+        webp_path = png_path.with_suffix('.webp')
+        
+        print(f"处理: {png_path}")
+        success = convert_png_to_webp(png_path, webp_path)
+        
+        if success:
+            # 删除原始PNG文件
+            os.remove(png_path)
+            print(f"  已转换为 {webp_path} 并删除原文件")
+        else:
+            print(f"  转换失败，保留原文件")
+
+if __name__ == "__main__":
+    print("开始将PNG转换为150x150的WebP（保留透明通道）...")
+    process_directory()
+    print("处理完成！")

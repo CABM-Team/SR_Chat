@@ -66,7 +66,9 @@ function splitByPunctuation(text) {
         '[',
         '(',
         '（',
-        '「'
+        '「',
+        '"',
+        '“',
     ]);
 
     const RIGHT_BRACKETS = new Set([
@@ -74,7 +76,9 @@ function splitByPunctuation(text) {
         ']',
         ')',
         '）',
-        '」'
+        '」',
+        '"',
+        '”',
     ]);
 
     let current = '';
@@ -115,6 +119,10 @@ function splitByPunctuation(text) {
             current += '...';
 
             if (getEffectiveLength(current) >= 6) {
+                if (RIGHT_BRACKETS.has(text[i + 3])) {
+                    current += text[i + 3];
+                    i++;
+                }
                 pushCurrent();
             }
 
@@ -129,6 +137,10 @@ function splitByPunctuation(text) {
             current += '……';
 
             if (getEffectiveLength(current) >= 6) {
+                if (RIGHT_BRACKETS.has(text[i + 2])) {
+                    current += text[i + 2];
+                    i++;
+                }
                 pushCurrent();
             }
 
@@ -143,6 +155,10 @@ function splitByPunctuation(text) {
             current += '…';
 
             if (getEffectiveLength(current) >= 6) {
+                if (RIGHT_BRACKETS.has(text[i + 1])) {
+                    current += text[i + 1];
+                    i++;
+                }
                 pushCurrent();
             }
 
@@ -156,15 +172,12 @@ function splitByPunctuation(text) {
         // 普通句末符号
         // =========================
         if ('。！？!?'.includes(ch)) {
-
             const nextChar = text[i + 1];
 
-            // 如果后面是右括号
-            // 例如：
-            // 第二句话。）
             if (RIGHT_BRACKETS.has(nextChar)) {
-                i++;
-                continue;
+                current += nextChar;  // 把右括号加到 current
+                i++;                   // 跳过右括号
+                // 注意：这里不要 continue，继续执行下面的 pushCurrent
             }
 
             pushCurrent();

@@ -435,8 +435,8 @@ body {
 }
 
 .emoji-image {
-    max-width: 150px;
-    max-height: 150px;
+    width: 150px;      /* 改为固定宽度，替代 max-width */
+    height: 150px;     /* 改为固定高度，替代 max-height */
     display: block;
 }
 
@@ -832,8 +832,8 @@ body {
     }
 
     .emoji-image {
-    max-width: 100px;
-    max-height: 100px;
+    width: 100px;
+    height: 100px;
     display: block;
     }
 }
