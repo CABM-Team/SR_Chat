@@ -180,8 +180,13 @@ async function renderMessages(contactId) {
             lastDisplayedTime = msg.timestamp;
         }
 
-        // 分句处理
-        const segments = splitText(msg.content);
+        // 分句处理（用户消息直接渲染原始内容）
+        let segments;
+        if (isMe) {
+            segments = [msg.content];
+        } else {
+            segments = splitText(msg.content);
+        }
         let lastIsMe = isMe; // 用于控制是否显示头像
 
         for (let j = 0; j < segments.length; j++) {
@@ -220,14 +225,23 @@ function showErrorMessage(contactId, errorMsg) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// 将联系人移到列表顶部并更新时间和预览
+// 将联系人移到列表顶部并更新时间和预览（显示分句后的最后一段）
 function moveContactToTop(contactId, preview) {
     const index = contactsData.findIndex(c => c.id === contactId);
     if (index === -1) return;
 
     const contact = contactsData.splice(index, 1)[0];
     contact.lastTime = new Date().toISOString();
-    contact.preview = preview;
+
+    // 分句后取最后一段作为预览
+    const segments = splitText(preview);
+    if (segments.length > 0) {
+        const lastSegment = segments[segments.length - 1];
+        contact.preview = isEmojiMarker(lastSegment) ? '[表情]' : lastSegment;
+    } else {
+        contact.preview = preview;
+    }
+
     contactsData.unshift(contact);
 
     renderContactList();
@@ -248,37 +262,68 @@ function moveContactToTop(contactId, preview) {
 async function displayReplyProgressive(replyContent, contactId) {
     const messagesContainer = document.getElementById('chatMessages');
     const msgIndex = messages[contactId].length - 1;
-
-    // 使用 splitter.js 分句
     const segments = splitText(replyContent);
 
     for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
 
-        // 等待1秒（除了第一句不需要等待）
-        if (i > 0) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        }
+        if (currentContact && currentContact.id !== contactId) break;
 
-        // 检查是否还在查看同一个联系人
-        if (currentContact && currentContact.id !== contactId) {
-            break;
-        }
+        // 统一显示打字动画气泡
+        const typingBubble = `
+            <div class="message-container" data-msg-index="${msgIndex}">
+                <div class="avatar">
+                    <img src="${currentContact.avatar}" alt="${currentContact.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${currentContact.name[0]}';">
+                </div>
+                <div class="message-content-wrapper">
+                    <div class="user-name">${escapeHtml(currentContact.name)}</div>
+                    <div class="msg-content-container">
+                        <div class="typing-dots">
+                            <span class="typing-dot"></span>
+                            <span class="typing-dot"></span>
+                            <span class="typing-dot"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        messagesContainer.insertAdjacentHTML('beforeend', typingBubble);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
+        // 计算等待时间
+        let waitTime = 1.0;
         if (isEmojiMarker(segment)) {
-            // 表情包（无气泡框）
-            const emojiName = extractEmojiName(segment);
-            const emojiUrl = await getEmojiUrl(contactId, emojiName);
-
-            if (emojiUrl) {
-                messagesContainer.insertAdjacentHTML('beforeend', renderEmojiBubble(emojiName, emojiUrl, msgIndex));
+            // 表情包：随机 1.0~3.0 秒
+            waitTime = 1.0 + Math.random() * 2.0;
+        } else if (i < segments.length - 1) {
+            // 文本：根据下一句字数（0~20字 → 2.0~4.0 秒）
+            const nextSegment = segments[i + 1];
+            if (nextSegment && nextSegment.text) {
+                const textLength = Math.min(20, Math.max(0, nextSegment.text.length));
+                waitTime = 2.0 + (textLength / 20) * 2.0;
             }
-        } else {
-            // 文本（独立气泡框）
-            messagesContainer.insertAdjacentHTML('beforeend', renderTextBubble(segment, msgIndex, false));
         }
 
-        // 滚动到底部
+        await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
+
+        if (currentContact && currentContact.id !== contactId) break;
+
+        // 替换为实际内容
+        const tempElement = messagesContainer.lastElementChild;
+        if (tempElement) {
+            let actualBubble;
+            if (isEmojiMarker(segment)) {
+                const emojiName = extractEmojiName(segment);
+                const emojiUrl = await getEmojiUrl(contactId, emojiName);
+                if (emojiUrl) {
+                    actualBubble = renderEmojiBubble(emojiName, emojiUrl, msgIndex);
+                }
+            } else {
+                actualBubble = renderTextBubble(segment, msgIndex, false);
+            }
+            if (actualBubble) tempElement.outerHTML = actualBubble;
+        }
+
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 }

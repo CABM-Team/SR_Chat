@@ -428,23 +428,15 @@ body {
 }
 
 /* 表情包样式 */
-.emoji-container {
-    padding: 5px;
-}
-
-.emoji-image,
-.inline-emoji {
-    max-width: 120px;
-    max-height: 120px;
+.emoji-base {
     border-radius: 8px;
-    display: block;
+    object-fit: contain; /* 可选，防止变形 */
 }
 
-.inline-emoji {
-    max-width: 80px;
-    max-height: 80px;
-    vertical-align: middle;
-    margin: 5px 2px;
+.emoji-image {
+    max-width: 150px;
+    max-height: 150px;
+    display: block;
 }
 
 .message-text {
@@ -836,5 +828,11 @@ body {
 
     .chat-messages {
         padding: 15px 20px;
+    }
+
+    .emoji-image {
+    max-width: 100px;
+    max-height: 100px;
+    display: block;
     }
 }
