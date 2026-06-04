@@ -10,6 +10,7 @@ from storage import get_user_storage
 from paths import DEFAULT_CONTACTS
 from llm import chat as llm_chat
 from safety import check_safety
+from prompt import build_system_prompt_by_id
 
 app = Flask(__name__)
 CORS(app)
@@ -160,21 +161,11 @@ def send_message():
         }
         storage.save_message(contact_id, user_message)
         
-        contact_prompt = ''
-        for c in DEFAULT_CONTACTS:
-            if c['id'] == contact_id:
-                contact_prompt = c.get('prompt', '')
-                break
-
-        user_identity = storage.get_contact_identity(contact_id)
-        if user_identity:
-            contact_prompt += f'\n用户是{user_identity}'
-        
-        contact_prompt+="\n你正在线上发消息聊天，因此请避免包含动作神态等。"
+        system_prompt = build_system_prompt_by_id(contact_id, storage)
         
         conversation_history = storage.get_messages(contact_id)
         
-        result = llm_chat(contact_prompt, conversation_history, message_text)
+        result = llm_chat(system_prompt, conversation_history, message_text)
         
         if result['success']:
             reply_content = result['reply']
