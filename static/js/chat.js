@@ -4,7 +4,7 @@
 
 function getBubbleClassName() {
     const bubbleStyle = currentUserSettings && currentUserSettings.bubble ? currentUserSettings.bubble : 'default';
-    
+
     const bubbleClasses = {
         'default': '',
         'bubbleStyle1': 'bubble-style1',
@@ -14,8 +14,69 @@ function getBubbleClassName() {
         'bubbleStyle5': 'bubble-style5',
         'bubbleStyle6': 'bubble-style6'
     };
-    
+
     return bubbleClasses[bubbleStyle] || '';
+}
+
+/**
+ * 渲染单条文本消息（带气泡框）
+ */
+function renderTextBubble(text, index, isMe) {
+    const alignClass = isMe ? 'message-container--align-right' : '';
+    const avatarSrc = isMe
+        ? (userAvatar || `data:text/html,<div style="width:40px;height:40px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:white;font-size:18px;border-radius:50%;">${currentUsername ? currentUsername[0].toUpperCase() : '我'}</div>`)
+        : currentContact.avatar;
+    const bubbleClass = getBubbleClassName();
+    const recallBtn = isMe
+        ? `<button class="recall-btn" data-msg-index="${index}" title="撤回">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
+            </svg>
+        </button>`
+        : '';
+
+    return `
+        <div class="message-container ${alignClass}" data-msg-index="${index}">
+            <div class="avatar">
+                ${isMe && !userAvatar
+                    ? avatarSrc
+                    : `<img src="${avatarSrc}" alt="${isMe ? '我' : currentContact.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${isMe ? (currentUsername ? currentUsername[0].toUpperCase() : '我') : currentContact.name[0]}';">`}
+            </div>
+            <div class="message-content-wrapper">
+                <div class="user-name">${isMe ? (currentUsername || '你') : currentContact.name}</div>
+                <div class="msg-content-container ${bubbleClass}">
+                    <div class="message-content">${escapeHtml(text)}</div>
+                    ${recallBtn}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * 渲染表情包消息（无气泡框）
+ */
+function renderEmojiBubble(emojiName, emojiUrl, index) {
+    return `
+        <div class="message-container" data-msg-index="${index}" data-emoji="true">
+            <div class="avatar">
+                <img src="${currentContact.avatar}" alt="${currentContact.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${currentContact.name[0]}';">
+            </div>
+            <div class="message-content-wrapper">
+                <div class="user-name">${escapeHtml(currentContact.name)}</div>
+                <div class="emoji-container">
+                    <img src="${emojiUrl}" alt="${emojiName}" class="emoji-image" data-emoji-name="${emojiName}">
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * 渲染时间戳
+ */
+function renderTimestampHtml(timestamp) {
+    return `<div class="message__timestamp">${timestamp}</div>`;
 }
 
 // ==================== UI 渲染函数 ====================
@@ -88,8 +149,8 @@ async function selectContact(contactId) {
     }
 }
 
-// 渲染消息
-function renderMessages(contactId) {
+// 渲染消息（分句显示，每个句子/表情独立气泡）
+async function renderMessages(contactId) {
     const messagesContainer = document.getElementById('chatMessages');
 
     if (!messages[contactId]) {
@@ -105,52 +166,46 @@ function renderMessages(contactId) {
         return;
     }
 
-    const userAvatarSrc = userAvatar || (currentUsername ? currentUsername[0].toUpperCase() : '我');
-    
     let lastDisplayedTime = null;
     let messageElements = [];
 
     for (let i = 0; i < messages[contactId].length; i++) {
         const msg = messages[contactId][i];
         const isMe = msg.isMe;
-        const alignClass = isMe ? 'message-container--align-right' : '';
-        
-        const avatarSrc = isMe ? (userAvatar || `data:text/html,<div style="width:40px;height:40px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:white;font-size:18px;border-radius:50%;">${currentUsername ? currentUsername[0].toUpperCase() : '我'}</div>`) : currentContact.avatar;
-        
-        // 检查是否需要显示时间
+
+        // 检查是否需要显示时间（每个原始消息显示一次）
         const showTime = formatMessageTime(msg.timestamp, lastDisplayedTime);
         if (showTime) {
-            messageElements.push(`
-                <div class="message__timestamp">${showTime}</div>
-            `);
+            messageElements.push(renderTimestampHtml(showTime));
             lastDisplayedTime = msg.timestamp;
         }
-        
-        const bubbleClass = getBubbleClassName();
 
-        const recallBtn = isMe ? `
-                    <button class="recall-btn" data-msg-index="${i}" title="撤回">
-                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
-                        </svg>
-                    </button>` : '';
+        // 分句处理
+        const segments = splitText(msg.content);
+        let lastIsMe = isMe; // 用于控制是否显示头像
 
-        messageElements.push(`
-            <div class="message-container ${alignClass}" data-msg-index="${i}">
-                <div class="avatar">
-                    ${isMe && !userAvatar ? avatarSrc : `<img src="${avatarSrc}" alt="${isMe ? '我' : currentContact.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${isMe ? (currentUsername ? currentUsername[0].toUpperCase() : '我') : currentContact.name[0]}';">`}
-                </div>
-                <div class="message-content-wrapper">
-                    <div class="user-name">${isMe ? (currentUsername || '你') : currentContact.name}</div>
-                    <div class="msg-content-container ${bubbleClass}">
-                        <div class="message-content">${escapeHtml(msg.content)}</div>
-                        ${recallBtn}
-                    </div>
-                </div>
-            </div>
-        `);
+        for (let j = 0; j < segments.length; j++) {
+            const segment = segments[j];
+
+            if (isEmojiMarker(segment)) {
+                // 表情包
+                const emojiName = extractEmojiName(segment);
+                const emojiUrl = await getEmojiUrl(contactId, emojiName);
+
+                if (emojiUrl) {
+                    // 表情包存在，渲染为独立气泡
+                    messageElements.push(renderEmojiBubble(emojiName, emojiUrl, i));
+                    lastIsMe = false;
+                }
+                // 如果表情包不存在，跳过
+            } else {
+                // 文本
+                messageElements.push(renderTextBubble(segment, i, lastIsMe));
+                lastIsMe = isMe; // 重置回原始值（用于下次判断）
+            }
+        }
     }
-    
+
     messagesContainer.innerHTML = messageElements.join('');
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
@@ -182,6 +237,49 @@ function moveContactToTop(contactId, preview) {
         if (activeItem) {
             activeItem.classList.add('active');
         }
+    }
+}
+
+/**
+ * 逐句展示回复（用于角色回复，每句独立气泡）
+ * @param {string} replyContent - 完整回复内容
+ * @param {number} contactId - 联系人ID
+ */
+async function displayReplyProgressive(replyContent, contactId) {
+    const messagesContainer = document.getElementById('chatMessages');
+    const msgIndex = messages[contactId].length - 1;
+
+    // 使用 splitter.js 分句
+    const segments = splitText(replyContent);
+
+    for (let i = 0; i < segments.length; i++) {
+        const segment = segments[i];
+
+        // 等待1秒（除了第一句不需要等待）
+        if (i > 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // 检查是否还在查看同一个联系人
+        if (currentContact && currentContact.id !== contactId) {
+            break;
+        }
+
+        if (isEmojiMarker(segment)) {
+            // 表情包（无气泡框）
+            const emojiName = extractEmojiName(segment);
+            const emojiUrl = await getEmojiUrl(contactId, emojiName);
+
+            if (emojiUrl) {
+                messagesContainer.insertAdjacentHTML('beforeend', renderEmojiBubble(emojiName, emojiUrl, msgIndex));
+            }
+        } else {
+            // 文本（独立气泡框）
+            messagesContainer.insertAdjacentHTML('beforeend', renderTextBubble(segment, msgIndex, false));
+        }
+
+        // 滚动到底部
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 }
 
@@ -217,7 +315,8 @@ async function sendMessage() {
     sendBtn.classList.add('send-msg--disabled');
     input.disabled = true;
 
-    renderMessages(contactId);
+    // 重新渲染所有消息
+    await renderMessages(contactId);
     showTypingIndicator(contactId);
 
     const contactName = currentContact.name;
@@ -237,9 +336,13 @@ async function sendMessage() {
             };
 
             messages[contactId].push(replyMessage);
+
             if (isStillViewing) {
-                renderMessages(contactId);
+                // 使用逐句展示（每句独立气泡）
+                await displayReplyProgressive(result.reply, contactId);
             }
+
+            // 更新联系人预览（使用原始回复内容）
             moveContactToTop(contactId, result.reply);
         } else if (result && result.error) {
             if (isStillViewing) {

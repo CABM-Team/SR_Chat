@@ -1,36 +1,11 @@
 """
 消息提示词构建模块
 """
-import os
-import glob
 from datetime import datetime
 
 from paths import DEFAULT_CONTACTS
+from emoji import get_emoji_list_for_contact, EMOJI_LIST_BY_NAME
 
-# 启动时加载 emoji_list
-EMOJI_LIST_BY_NAME = {}
-
-def _load_emoji_lists():
-    """启动时加载所有角色的 emoji 列表"""
-    emoji_base = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'emoji')
-    for char_dir in os.listdir(emoji_base):
-        char_path = os.path.join(emoji_base, char_dir)
-        if os.path.isdir(char_path):
-            emojis = []
-            for webp_file in glob.glob(os.path.join(char_path, '*.webp')):
-                emoji_name = os.path.splitext(os.path.basename(webp_file))[0]
-                emojis.append(emoji_name)
-            EMOJI_LIST_BY_NAME[char_dir] = ','.join(emojis)
-
-_load_emoji_lists()
-
-def _get_emoji_list_for_contact(contact_id: int) -> str:
-    """根据 contact_id 获取对应角色的 emoji_list"""
-    for c in DEFAULT_CONTACTS:
-        if c['id'] == contact_id:
-            char_name = c.get('name', '')
-            return EMOJI_LIST_BY_NAME.get(char_name, '')
-    return ''
 
 def build_system_prompt_by_id(contact_id: int, storage) -> str:
     """
@@ -50,7 +25,8 @@ def build_system_prompt_by_id(contact_id: int, storage) -> str:
             break
 
     user_identity = storage.get_contact_identity(contact_id)
-    emoji_list = _get_emoji_list_for_contact(contact_id)
+    emoji_info = get_emoji_list_for_contact(contact_id)
+    emoji_list = ','.join(emoji_info['emojis'])
 
     return build_system_prompt(contact_prompt, user_identity, emoji_list)
 

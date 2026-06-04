@@ -11,6 +11,7 @@ from paths import DEFAULT_CONTACTS
 from llm import chat as llm_chat
 from safety import check_safety
 from prompt import build_system_prompt_by_id
+from emoji import get_emoji_api, get_single_emoji_api, check_emoji_exists
 
 app = Flask(__name__)
 CORS(app)
@@ -383,6 +384,18 @@ def health_check():
         'status': 'running',
         'timestamp': datetime.now().isoformat()
     }), 200
+
+@app.route('/chat/emoji/<int:contact_id>', methods=['GET'])
+@login_required
+def get_contact_emoji_list(contact_id):
+    """获取角色的表情包列表"""
+    return get_emoji_api(contact_id)
+
+@app.route('/chat/emoji/<int:contact_id>/<emoji_name>', methods=['GET'])
+@login_required
+def get_contact_emoji(contact_id, emoji_name):
+    """获取单个表情包"""
+    return get_single_emoji_api(contact_id, emoji_name)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

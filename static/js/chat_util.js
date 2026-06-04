@@ -10,6 +10,11 @@ let userAvatar = null;
 let isRedirecting = false;
 let contactsData = [];
 
+// 表情包缓存：key 为 `${contactId}_${emojiName}`，value 为 emoji URL
+const emojiCache = {};
+// 表情包列表缓存
+const emojiListCache = {};
+
 // ==================== 工具函数 ====================
 
 // HTML转义函数
@@ -333,4 +338,85 @@ async function recallMessageAPI(contactId, messageIndex) {
         console.error('撤回消息失败:', error);
     }
     return null;
+}
+
+// ==================== 表情包相关函数 ====================
+
+/**
+ * 获取角色的表情包列表（带缓存）
+ * @param {number} contactId - 联系人ID
+ * @returns {Promise<Array>} 表情包名称列表
+ */
+async function getEmojiList(contactId) {
+    // 先检查缓存
+    if (emojiListCache[contactId]) {
+        return emojiListCache[contactId];
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/emoji/${contactId}`);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data) {
+                emojiListCache[contactId] = data.data.emojis || [];
+                return emojiListCache[contactId];
+            }
+        }
+    } catch (error) {
+        console.error('获取表情包列表失败:', error);
+    }
+    return [];
+}
+
+/**
+ * 获取单个表情包的URL（带缓存）
+ * @param {number} contactId - 联系人ID
+ * @param {string} emojiName - 表情名称
+ * @returns {Promise<string|null>} 表情包URL，不存在则返回null
+ */
+async function getEmojiUrl(contactId, emojiName) {
+    const cacheKey = `${contactId}_${emojiName}`;
+
+    // 先检查缓存
+    if (emojiCache[cacheKey] !== undefined) {
+        return emojiCache[cacheKey];
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/emoji/${contactId}/${encodeURIComponent(emojiName)}`);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data) {
+                emojiCache[cacheKey] = data.data.emoji_url;
+                return emojiCache[cacheKey];
+            }
+        }
+    } catch (error) {
+        console.error('获取表情包URL失败:', error);
+    }
+
+    // 标记为不存在
+    emojiCache[cacheKey] = null;
+    return null;
+}
+
+/**
+ * 检查表情包是否存在
+ * @param {number} contactId - 联系人ID
+ * @param {string} emojiName - 表情名称
+ * @returns {Promise<boolean>} 是否存在
+ */
+async function checkEmojiExists(contactId, emojiName) {
+    const url = await getEmojiUrl(contactId, emojiName);
+    return url !== null;
+}
+
+/**
+ * 预加载表情包列表（选择联系人时调用）
+ * @param {number} contactId - 联系人ID
+ */
+async function preloadEmojiList(contactId) {
+    if (!emojiListCache[contactId]) {
+        await getEmojiList(contactId);
+    }
 }
