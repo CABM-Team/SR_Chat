@@ -339,12 +339,16 @@ async function displayReplyProgressive(replyContent, contactId) {
         if (tempElement) {
             let actualBubble;
             if (isEmojiMarker(segment)) {
-                const emojiName = extractEmojiName(segment);
-                const emojiUrl = await getEmojiUrl(contactId, emojiName);
-                if (emojiUrl) {
-                    actualBubble = renderEmojiBubble(emojiName, emojiUrl, msgIndex);
-                }
-            } else {
+                    const emojiName = extractEmojiName(segment);
+                    const emojiUrl = await getEmojiUrl(contactId, emojiName);
+                    if (emojiUrl) {
+                        actualBubble = renderEmojiBubble(emojiName, emojiUrl, msgIndex);
+                    } else {
+                        // 表情不存在，移除加载指示器
+                        tempElement.remove();
+                        continue;
+                    }
+                } else {
                 actualBubble = renderTextBubble(segment, msgIndex, false);
             }
             if (actualBubble) {
