@@ -85,9 +85,20 @@ function renderTimestampHtml(timestamp) {
 function renderContactList(contacts) {
     const listContainer = document.getElementById('contactList');
     const contactsToRender = contacts || contactsData;
-
     listContainer.innerHTML = contactsToRender.map(contact => {
         const formattedTime = formatContactTime(contact.lastTime);
+        
+        // 分句后取最后一段作为预览
+        const preview = contact.preview || '';
+        console.log(preview);
+        const segments = splitText(preview);
+        let displayPreview = preview;
+        if (segments.length > 0) {
+            console.log(segments);
+            const lastSegment = segments[segments.length - 1];
+            displayPreview = isEmojiMarker(lastSegment) ? '[表情]' : lastSegment;
+        }
+        
         return `
             <div class="recent-contact-item" data-id="${contact.id}">
                 <div class="avatar">
@@ -98,7 +109,7 @@ function renderContactList(contacts) {
                         <span class="contact-name">${escapeHtml(contact.name)}</span>
                         <span class="contact-time">${formattedTime}</span>
                     </div>
-                    <div class="contact-preview">${escapeHtml(contact.preview || '')}</div>
+                    <div class="contact-preview">${escapeHtml(displayPreview)}</div>
                 </div>
             </div>
         `;
@@ -212,6 +223,20 @@ async function renderMessages(contactId) {
     }
 
     messagesContainer.innerHTML = messageElements.join('');
+    
+    // 等待所有表情包图片加载完成
+    const emojiImages = messagesContainer.querySelectorAll('.emoji-image');
+    if (emojiImages.length > 0) {
+        const imagePromises = Array.from(emojiImages).map(img => {
+            if (img.complete) return Promise.resolve();
+            return new Promise(resolve => {
+                img.addEventListener('load', resolve);
+                img.addEventListener('error', resolve); // 错误也继续
+            });
+        });
+        await Promise.all(imagePromises);
+    }
+    
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
@@ -237,6 +262,7 @@ function moveContactToTop(contactId, preview) {
     const segments = splitText(preview);
     if (segments.length > 0) {
         const lastSegment = segments[segments.length - 1];
+        console.log(lastSegment);
         contact.preview = isEmojiMarker(lastSegment) ? '[表情]' : lastSegment;
     } else {
         contact.preview = preview;
@@ -321,7 +347,13 @@ async function displayReplyProgressive(replyContent, contactId) {
             } else {
                 actualBubble = renderTextBubble(segment, msgIndex, false);
             }
-            if (actualBubble) tempElement.outerHTML = actualBubble;
+            if (actualBubble) {
+                tempElement.outerHTML = actualBubble;
+                // 延迟滚动，等待 DOM 更新和图片渲染
+                setTimeout(() => {
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }, 50);
+            }
         }
 
         messagesContainer.scrollTop = messagesContainer.scrollHeight;

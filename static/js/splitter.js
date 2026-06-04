@@ -51,29 +51,23 @@ function splitText(text) {
  * @returns {Array} 分句后的数组
  */
 function splitByPunctuation(text) {
-    const punctuationPattern = /([^。！？\n]+[。！？]+)/g;
+    const punctuationPattern =
+        /(.+?(?:\.\.\.|……|[。！？!?]))/g;
+
     const segments = [];
 
     let match;
     let lastMatchEnd = 0;
 
     while ((match = punctuationPattern.exec(text)) !== null) {
-        let sentence = match[0].trim();
-
-        if (sentence) {
-            sentence = sentence.replace(/。$/, '');
-            segments.push(sentence);
-        }
-
+        segments.push(match[0].trim().replace(/。$/, ''));
         lastMatchEnd = punctuationPattern.lastIndex;
     }
 
     if (lastMatchEnd < text.length) {
-        let remaining = text.substring(lastMatchEnd).trim();
-
+        const remaining = text.substring(lastMatchEnd).trim();
         if (remaining) {
-            remaining = remaining.replace(/。$/, '');
-            segments.push(remaining);
+            segments.push(remaining.replace(/。$/, ''));
         }
     }
 

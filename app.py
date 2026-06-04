@@ -72,7 +72,7 @@ def get_contacts():
             if messages:
                 last_msg = messages[-1]
                 content = last_msg.get('content', '')
-                preview = content[:30] + '...' if len(content) > 30 else content
+                preview = content
                 
                 timestamp = last_msg.get('timestamp', '')
                 if timestamp:
