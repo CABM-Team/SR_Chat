@@ -1,0 +1,68 @@
+import os
+from PIL import Image
+
+def check_webp_has_alpha(filepath):
+    """
+    检查WebP文件是否包含透明通道
+    返回True如果包含透明通道，否则返回False
+    """
+    try:
+        with Image.open(filepath) as img:
+            # 检查图片模式是否包含透明通道
+            # 'RGBA', 'LA', 'PA'等模式都包含alpha通道
+            if img.mode in ('RGBA', 'LA', 'PA') or 'A' in img.mode:
+                # 进一步检查是否真的使用了透明通道
+                if img.mode == 'RGBA':
+                    # 获取alpha通道数据
+                    alpha = img.getchannel('A')
+                    # 检查是否有任何像素的alpha值小于255（即不完全透明）
+                    # 注意：这里判断是否有透明通道是指存在半透明或完全透明的像素
+                    # 如果想要严格判断是否存在透明通道（即使所有像素都不透明），
+                    # 可以简化检查，直接返回True
+                    extrema = alpha.getextrema()
+                    # 如果最小值小于255，说明存在透明或半透明像素
+                    return extrema[0] < 255
+                return True  # 其他包含alpha的模式认为有透明通道
+            return False
+    except Exception as e:
+        print(f"无法处理文件 {filepath}: {e}")
+        return False
+
+def find_webp_files_without_alpha(directory='.'):
+    """
+    查找当前目录及子目录中没有透明通道的WebP文件
+    """
+    webp_files_without_alpha = []
+    
+    # 遍历目录
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.lower().endswith('.webp'):
+                filepath = os.path.join(root, file)
+                if not check_webp_has_alpha(filepath):
+                    webp_files_without_alpha.append(filepath)
+    
+    return webp_files_without_alpha
+
+def main():
+    print("正在检查当前目录及子目录中的WebP文件...")
+    
+    # 获取所有没有透明通道的WebP文件
+    result = find_webp_files_without_alpha()
+    
+    # 输出结果
+    if result:
+        print(f"\n找到 {len(result)} 个没有透明通道的WebP文件:")
+        for idx, filepath in enumerate(result, 1):
+            print(f"{idx}. {filepath}")
+        
+        # 可选：保存结果到文件
+        with open('webp_without_alpha.txt', 'w', encoding='utf-8') as f:
+            for filepath in result:
+                f.write(f"{filepath}\n")
+        print(f"\n结果已保存到 webp_without_alpha.txt")
+    else:
+        print("\n没有找到没有透明通道的WebP文件。")
+
+if __name__ == "__main__":
+    main()

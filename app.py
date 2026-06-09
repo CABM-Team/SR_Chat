@@ -4,7 +4,6 @@ import logging
 from datetime import datetime
 from functools import wraps
 import os
-
 from auth import auth_bp
 from storage import get_user_storage
 from paths import DEFAULT_CONTACTS
@@ -16,7 +15,7 @@ from emoji import get_emoji_api, get_single_emoji_api, check_emoji_exists
 app = Flask(__name__)
 CORS(app)
 
-app.secret_key = 'sr_chat_secret_key_2024'
+app.secret_key = os.environ.get('SECRET_KEY')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_PERMANENT'] = True
 app.permanent_session_lifetime = 86400 * 7
@@ -398,4 +397,4 @@ def get_contact_emoji(contact_id, emoji_name):
     return get_single_emoji_api(contact_id, emoji_name)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)
