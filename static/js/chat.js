@@ -18,6 +18,11 @@ function getBubbleClassName() {
     return bubbleClasses[bubbleStyle] || '';
 }
 
+// ==================== 分页渲染状态 ====================
+const MESSAGE_BATCH_SIZE = 50;
+let startRenderIdx = 0;
+let isLoadingMore = false;
+
 /**
  * 渲染单条文本消息（带气泡框）
  */
@@ -160,7 +165,66 @@ async function selectContact(contactId) {
     }
 }
 
-// 渲染消息（分句显示，每个句子/表情独立气泡）
+// ==================== 分页渲染 ====================
+
+/**
+ * 构建指定范围内的消息 HTML 元素
+ * @param {number} startIdx - 起始消息索引（含）
+ * @param {number} endIdx - 结束消息索引（不含）
+ * @param {number} contactId - 联系人ID
+ * @param {string|null} prevTimestamp - 上一条消息的时间戳（用于判断是否显示时间）
+ * @returns {Promise<{elements: string[], lastTimestamp: string|null}>}
+ */
+async function _buildMessageElements(startIdx, endIdx, contactId, prevTimestamp) {
+    const msgList = messages[contactId];
+    let lastDisplayedTime = prevTimestamp;
+    const elements = [];
+
+    for (let i = startIdx; i < endIdx; i++) {
+        const msg = msgList[i];
+        const isMe = msg.isMe;
+
+        const showTime = formatMessageTime(msg.timestamp, lastDisplayedTime);
+        if (showTime) {
+            elements.push(renderTimestampHtml(showTime));
+            lastDisplayedTime = msg.timestamp;
+        }
+
+        let segments;
+        if (isMe) {
+            segments = [msg.content];
+        } else {
+            segments = splitText(msg.content);
+        }
+        let lastIsMe = isMe;
+
+        for (let j = 0; j < segments.length; j++) {
+            const segment = segments[j];
+
+            if (isEmojiMarker(segment)) {
+                const emojiName = extractEmojiName(segment);
+                const emojiUrl = await getEmojiUrl(contactId, emojiName);
+                if (emojiUrl) {
+                    elements.push(renderEmojiBubble(emojiName, emojiUrl, i));
+                    lastIsMe = false;
+                }
+            } else {
+                elements.push(renderTextBubble(segment, i, lastIsMe));
+                lastIsMe = isMe;
+            }
+        }
+    }
+
+    return { elements, lastTimestamp: lastDisplayedTime };
+}
+
+function renderLoadMoreIndicator() {
+    return `<div class="load-more-indicator" id="loadMoreIndicator">
+        <button class="load-more-btn" id="loadMoreBtn">加载更多消息</button>
+    </div>`;
+}
+
+// 渲染消息（分句显示，每个句子/表情独立气泡，分批渲染）
 async function renderMessages(contactId) {
     const messagesContainer = document.getElementById('chatMessages');
 
@@ -174,56 +238,29 @@ async function renderMessages(contactId) {
                 <p>开始和 ${currentContact.name} 的对话吧</p>
             </div>
         `;
+        startRenderIdx = 0;
         return;
     }
 
-    let lastDisplayedTime = null;
-    let messageElements = [];
+    const msgList = messages[contactId];
+    startRenderIdx = Math.max(0, msgList.length - MESSAGE_BATCH_SIZE);
 
-    for (let i = 0; i < messages[contactId].length; i++) {
-        const msg = messages[contactId][i];
-        const isMe = msg.isMe;
-
-        // 检查是否需要显示时间（每个原始消息显示一次）
-        const showTime = formatMessageTime(msg.timestamp, lastDisplayedTime);
-        if (showTime) {
-            messageElements.push(renderTimestampHtml(showTime));
-            lastDisplayedTime = msg.timestamp;
-        }
-
-        // 分句处理（用户消息直接渲染原始内容）
-        let segments;
-        if (isMe) {
-            segments = [msg.content];
-        } else {
-            segments = splitText(msg.content);
-        }
-        let lastIsMe = isMe; // 用于控制是否显示头像
-
-        for (let j = 0; j < segments.length; j++) {
-            const segment = segments[j];
-
-            if (isEmojiMarker(segment)) {
-                // 表情包
-                const emojiName = extractEmojiName(segment);
-                const emojiUrl = await getEmojiUrl(contactId, emojiName);
-
-                if (emojiUrl) {
-                    // 表情包存在，渲染为独立气泡
-                    messageElements.push(renderEmojiBubble(emojiName, emojiUrl, i));
-                    lastIsMe = false;
-                }
-                // 如果表情包不存在，跳过
-            } else {
-                // 文本
-                messageElements.push(renderTextBubble(segment, i, lastIsMe));
-                lastIsMe = isMe; // 重置回原始值（用于下次判断）
-            }
-        }
+    // 获取上一条消息的时间戳用于时间显示判断
+    let prevTimestamp = null;
+    if (startRenderIdx > 0) {
+        prevTimestamp = msgList[startRenderIdx - 1].timestamp;
     }
 
-    messagesContainer.innerHTML = messageElements.join('');
-    
+    const { elements } = await _buildMessageElements(startRenderIdx, msgList.length, contactId, prevTimestamp);
+
+    let html = '';
+    if (startRenderIdx > 0) {
+        html += renderLoadMoreIndicator();
+    }
+    html += elements.join('');
+
+    messagesContainer.innerHTML = html;
+
     // 等待所有表情包图片加载完成
     const emojiImages = messagesContainer.querySelectorAll('.emoji-image');
     if (emojiImages.length > 0) {
@@ -231,13 +268,68 @@ async function renderMessages(contactId) {
             if (img.complete) return Promise.resolve();
             return new Promise(resolve => {
                 img.addEventListener('load', resolve);
-                img.addEventListener('error', resolve); // 错误也继续
+                img.addEventListener('error', resolve);
             });
         });
         await Promise.all(imagePromises);
     }
-    
+
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+/**
+ * 加载更多历史消息（向上滚动时触发）
+ */
+async function loadMoreMessages() {
+    if (isLoadingMore || !currentContact) return;
+
+    const contactId = currentContact.id;
+    const msgList = messages[contactId] || [];
+
+    if (startRenderIdx <= 0) return;
+
+    isLoadingMore = true;
+
+    // 更新加载指示器状态
+    const loadIndicator = document.getElementById('loadMoreIndicator');
+    if (loadIndicator) {
+        loadIndicator.innerHTML = '<span class="load-more-text">正在从流光忆庭获取记忆...</span>';
+    }
+
+    const messagesContainer = document.getElementById('chatMessages');
+    const prevScrollHeight = messagesContainer.scrollHeight;
+    const prevScrollTop = messagesContainer.scrollTop;
+
+    const newStartIdx = Math.max(0, startRenderIdx - MESSAGE_BATCH_SIZE);
+
+    let prevTimestamp = null;
+    if (newStartIdx > 0) {
+        prevTimestamp = msgList[newStartIdx - 1].timestamp;
+    }
+
+    const { elements } = await _buildMessageElements(newStartIdx, startRenderIdx, contactId, prevTimestamp);
+
+    // 移除旧的加载指示器
+    if (loadIndicator) {
+        loadIndicator.remove();
+    }
+
+    // 构建新 HTML
+    let newHtml = '';
+    if (newStartIdx > 0) {
+        newHtml += renderLoadMoreIndicator();
+    }
+    newHtml += elements.join('');
+
+    // 插入到容器顶部
+    messagesContainer.insertAdjacentHTML('afterbegin', newHtml);
+
+    // 保持滚动位置不变
+    const newScrollHeight = messagesContainer.scrollHeight;
+    messagesContainer.scrollTop = prevScrollTop + (newScrollHeight - prevScrollHeight);
+
+    startRenderIdx = newStartIdx;
+    isLoadingMore = false;
 }
 
 // 显示错误提示
@@ -604,6 +696,21 @@ function setupEventListeners() {
     document.getElementById('clearChatBtn').addEventListener('click', handleClearChat);
 
     document.getElementById('chatMessages').addEventListener('click', handleRecallMessage);
+
+    // 滚动加载更多消息
+    const messagesContainer = document.getElementById('chatMessages');
+    messagesContainer.addEventListener('scroll', () => {
+        if (messagesContainer.scrollTop < 100 && !isLoadingMore && startRenderIdx > 0) {
+            loadMoreMessages();
+        }
+    });
+
+    // 加载更多按钮（事件委托）
+    messagesContainer.addEventListener('click', (e) => {
+        if (e.target.closest('#loadMoreBtn')) {
+            loadMoreMessages();
+        }
+    });
 
     document.addEventListener('click', (e) => {
         const dropdown = document.getElementById('chatMenuDropdown');

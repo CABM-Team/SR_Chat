@@ -609,6 +609,34 @@ body {
     background-repeat: no-repeat;
 }
 
+/* 加载更多消息指示器 */
+.load-more-indicator {
+    text-align: center;
+    padding: 12px 0 8px;
+}
+
+.load-more-btn {
+    background: rgba(172, 172, 172, 0.2);
+    border: 1px solid rgba(172, 172, 172, 0.4);
+    border-radius: 15px;
+    padding: 6px 20px;
+    color: rgb(120, 120, 120);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.load-more-btn:hover {
+    background: rgba(172, 172, 172, 0.35);
+    color: rgb(80, 80, 80);
+}
+
+.load-more-text {
+    color: rgb(150, 150, 150);
+    font-size: 13px;
+}
+
 ::-webkit-scrollbar {
     width: 8px;
 }
